@@ -1,0 +1,13 @@
+prefix=@PREFIX@
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: sgate
+Description: My Multi-Paxos named Steins-Gate in C++
+Version: @VERSION@
+
+Requires: apr-1 apr-util-1 json check
+Requires.private: 
+Libs: -L${libdir} -lsgate
+Cflags: -I${includedir} @CFLAGS@

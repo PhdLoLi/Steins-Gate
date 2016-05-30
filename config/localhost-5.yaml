@@ -1,0 +1,19 @@
+host:
+  - name: node1
+    addr: localhost
+    port: 8881
+  - name: node2
+    addr: localhost
+    port: 8882
+  - name: node3
+    addr: localhost
+    port: 8883
+  - name: node4
+    addr: localhost
+    port: 8884
+  - name: node5
+    addr: localhost
+    port: 8885
+lease:
+  master_id: 0
+  period: 500

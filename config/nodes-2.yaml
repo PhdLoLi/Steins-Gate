@@ -1,0 +1,7 @@
+host:
+  - name: node1
+    addr: 192.168.5.20 
+    port: 8881
+  - name: node2
+    addr: 192.168.5.21
+    port: 8882
