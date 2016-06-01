@@ -19,7 +19,7 @@ _sym_db = _symbol_database.Default()
 DESCRIPTOR = _descriptor.FileDescriptor(
   name='sgate.proto',
   package='sgate',
-  serialized_pb=_b('\n\x0bsgate.proto\x12\x05sgate\"O\n\tMsgHeader\x12 \n\x08msg_type\x18\x01 \x02(\x0e\x32\x0e.sgate.MsgType\x12\x0f\n\x07node_id\x18\x02 \x02(\r\x12\x0f\n\x07slot_id\x18\x03 \x02(\x04\"Z\n\tPropValue\x12\n\n\x02id\x18\x01 \x02(\x04\x12\x0c\n\x04\x64\x61ta\x18\x02 \x02(\t\x12 \n\x08\x63md_type\x18\x03 \x01(\x0e\x32\x0e.sgate.CmdType\x12\x11\n\tintegrity\x18\x04 \x01(\x08\"E\n\nMsgPrepare\x12$\n\nmsg_header\x18\x01 \x02(\x0b\x32\x10.sgate.MsgHeader\x12\x11\n\tballot_id\x18\x02 \x02(\x04\"\x98\x01\n\rMsgAckPrepare\x12$\n\nmsg_header\x18\x01 \x02(\x0b\x32\x10.sgate.MsgHeader\x12\x11\n\tballot_id\x18\x02 \x02(\x04\x12\r\n\x05reply\x18\x03 \x02(\x08\x12\x15\n\rmax_ballot_id\x18\x04 \x02(\x04\x12(\n\x0emax_prop_value\x18\x05 \x01(\x0b\x32\x10.sgate.PropValue\"j\n\tMsgAccept\x12$\n\nmsg_header\x18\x01 \x02(\x0b\x32\x10.sgate.MsgHeader\x12\x11\n\tballot_id\x18\x02 \x02(\x04\x12$\n\nprop_value\x18\x03 \x02(\x0b\x32\x10.sgate.PropValue\"V\n\x0cMsgAckAccept\x12$\n\nmsg_header\x18\x01 \x02(\x0b\x32\x10.sgate.MsgHeader\x12\x11\n\tballot_id\x18\x02 \x02(\x04\x12\r\n\x05reply\x18\x03 \x02(\x08\"C\n\tMsgDecide\x12$\n\nmsg_header\x18\x01 \x02(\x0b\x32\x10.sgate.MsgHeader\x12\x10\n\x08value_id\x18\x02 \x02(\x04\"0\n\x08MsgLearn\x12$\n\nmsg_header\x18\x01 \x02(\x0b\x32\x10.sgate.MsgHeader\"V\n\x08MsgTeach\x12$\n\nmsg_header\x18\x01 \x02(\x0b\x32\x10.sgate.MsgHeader\x12$\n\nprop_value\x18\x02 \x02(\x0b\x32\x10.sgate.PropValue\"W\n\tMsgCommit\x12$\n\nmsg_header\x18\x01 \x02(\x0b\x32\x10.sgate.MsgHeader\x12$\n\nprop_value\x18\x02 \x02(\x0b\x32\x10.sgate.PropValue\"T\n\nMsgCommand\x12$\n\nmsg_header\x18\x01 \x02(\x0b\x32\x10.sgate.MsgHeader\x12 \n\x08\x63md_type\x18\x02 \x02(\x0e\x32\x0e.sgate.CmdType\"Y\n\x10MsgPeriodTryTime\x12\x0f\n\x07percent\x18\x01 \x02(\x02\x12\x0e\n\x06period\x18\x02 \x02(\r\x12\x12\n\nexe_period\x18\x03 \x02(\r\x12\x10\n\x08try_time\x18\x04 \x02(\r\"I\n\tMsgResult\x12\x12\n\nthroughput\x18\x01 \x02(\r\x12(\n\x07msg_ptt\x18\x02 \x03(\x0b\x32\x17.sgate.MsgPeriodTryTime*x\n\x07MsgType\x12\x0b\n\x07PREPARE\x10\x00\x12\x0b\n\x07PROMISE\x10\x01\x12\n\n\x06\x41\x43\x43\x45PT\x10\x02\x12\x0c\n\x08\x41\x43\x43\x45PTED\x10\x03\x12\n\n\x06\x44\x45\x43IDE\x10\x04\x12\t\n\x05LEARN\x10\x05\x12\t\n\x05TEACH\x10\x06\x12\n\n\x06\x43OMMIT\x10\x07\x12\x0b\n\x07\x43OMMAND\x10\x08*\x19\n\x07\x43mdType\x12\x0e\n\nSET_MASTER\x10\x00')
+  serialized_pb=_b('\n\x0bsgate.proto\x12\x05sgate\"O\n\tMsgHeader\x12 \n\x08msg_type\x18\x01 \x02(\x0e\x32\x0e.sgate.MsgType\x12\x0f\n\x07node_id\x18\x02 \x02(\r\x12\x0f\n\x07slot_id\x18\x03 \x02(\x04\"Z\n\tPropValue\x12\n\n\x02id\x18\x01 \x02(\x04\x12\x0c\n\x04\x64\x61ta\x18\x02 \x02(\t\x12 \n\x08\x63md_type\x18\x03 \x01(\x0e\x32\x0e.sgate.CmdType\x12\x11\n\tintegrity\x18\x04 \x01(\x08\")\n\x0b\x43lientValue\x12\x0c\n\x04read\x18\x01 \x02(\x08\x12\x0c\n\x04\x64\x61ta\x18\x02 \x02(\t\"m\n\x0e\x43lientResValue\x12 \n\x08res_type\x18\x01 \x02(\x0e\x32\x0e.sgate.ResType\x12\x0c\n\x04read\x18\x02 \x01(\x08\x12\n\n\x02ok\x18\x03 \x01(\x08\x12\x0c\n\x04\x64\x61ta\x18\x04 \x01(\t\x12\x11\n\tmaster_id\x18\x05 \x01(\r\"E\n\nMsgPrepare\x12$\n\nmsg_header\x18\x01 \x02(\x0b\x32\x10.sgate.MsgHeader\x12\x11\n\tballot_id\x18\x02 \x02(\x04\"\x98\x01\n\rMsgAckPrepare\x12$\n\nmsg_header\x18\x01 \x02(\x0b\x32\x10.sgate.MsgHeader\x12\x11\n\tballot_id\x18\x02 \x02(\x04\x12\r\n\x05reply\x18\x03 \x02(\x08\x12\x15\n\rmax_ballot_id\x18\x04 \x02(\x04\x12(\n\x0emax_prop_value\x18\x05 \x01(\x0b\x32\x10.sgate.PropValue\"j\n\tMsgAccept\x12$\n\nmsg_header\x18\x01 \x02(\x0b\x32\x10.sgate.MsgHeader\x12\x11\n\tballot_id\x18\x02 \x02(\x04\x12$\n\nprop_value\x18\x03 \x02(\x0b\x32\x10.sgate.PropValue\"V\n\x0cMsgAckAccept\x12$\n\nmsg_header\x18\x01 \x02(\x0b\x32\x10.sgate.MsgHeader\x12\x11\n\tballot_id\x18\x02 \x02(\x04\x12\r\n\x05reply\x18\x03 \x02(\x08\"C\n\tMsgDecide\x12$\n\nmsg_header\x18\x01 \x02(\x0b\x32\x10.sgate.MsgHeader\x12\x10\n\x08value_id\x18\x02 \x02(\x04\"0\n\x08MsgLearn\x12$\n\nmsg_header\x18\x01 \x02(\x0b\x32\x10.sgate.MsgHeader\"V\n\x08MsgTeach\x12$\n\nmsg_header\x18\x01 \x02(\x0b\x32\x10.sgate.MsgHeader\x12$\n\nprop_value\x18\x02 \x02(\x0b\x32\x10.sgate.PropValue\"X\n\tMsgCommit\x12$\n\nmsg_header\x18\x01 \x02(\x0b\x32\x10.sgate.MsgHeader\x12%\n\tcli_value\x18\x02 \x02(\x0b\x32\x12.sgate.ClientValue\"b\n\x0cMsgAckCommit\x12$\n\nmsg_header\x18\x01 \x02(\x0b\x32\x10.sgate.MsgHeader\x12,\n\rcli_res_value\x18\x02 \x02(\x0b\x32\x15.sgate.ClientResValue\"T\n\nMsgCommand\x12$\n\nmsg_header\x18\x01 \x02(\x0b\x32\x10.sgate.MsgHeader\x12 \n\x08\x63md_type\x18\x02 \x02(\x0e\x32\x0e.sgate.CmdType\"Y\n\x10MsgPeriodTryTime\x12\x0f\n\x07percent\x18\x01 \x02(\x02\x12\x0e\n\x06period\x18\x02 \x02(\r\x12\x12\n\nexe_period\x18\x03 \x02(\r\x12\x10\n\x08try_time\x18\x04 \x02(\r\"I\n\tMsgResult\x12\x12\n\nthroughput\x18\x01 \x02(\r\x12(\n\x07msg_ptt\x18\x02 \x03(\x0b\x32\x17.sgate.MsgPeriodTryTime*\x87\x01\n\x07MsgType\x12\x0b\n\x07PREPARE\x10\x00\x12\x0b\n\x07PROMISE\x10\x01\x12\n\n\x06\x41\x43\x43\x45PT\x10\x02\x12\x0c\n\x08\x41\x43\x43\x45PTED\x10\x03\x12\n\n\x06\x44\x45\x43IDE\x10\x04\x12\t\n\x05LEARN\x10\x05\x12\t\n\x05TEACH\x10\x06\x12\n\n\x06\x43OMMIT\x10\x07\x12\r\n\tCOMMITTED\x10\x08\x12\x0b\n\x07\x43OMMAND\x10\t*\x19\n\x07\x43mdType\x12\x0e\n\nSET_MASTER\x10\x00*!\n\x07ResType\x12\x07\n\x03RET\x10\x00\x12\r\n\tMASTER_ID\x10\x01')
 )
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
@@ -62,14 +62,18 @@ _MSGTYPE = _descriptor.EnumDescriptor(
       options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='COMMAND', index=8, number=8,
+      name='COMMITTED', index=8, number=8,
+      options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='COMMAND', index=9, number=9,
       options=None,
       type=None),
   ],
   containing_type=None,
   options=None,
-  serialized_start=1165,
-  serialized_end=1285,
+  serialized_start=1421,
+  serialized_end=1556,
 )
 _sym_db.RegisterEnumDescriptor(_MSGTYPE)
 
@@ -87,12 +91,35 @@ _CMDTYPE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=1287,
-  serialized_end=1312,
+  serialized_start=1558,
+  serialized_end=1583,
 )
 _sym_db.RegisterEnumDescriptor(_CMDTYPE)
 
 CmdType = enum_type_wrapper.EnumTypeWrapper(_CMDTYPE)
+_RESTYPE = _descriptor.EnumDescriptor(
+  name='ResType',
+  full_name='sgate.ResType',
+  filename=None,
+  file=DESCRIPTOR,
+  values=[
+    _descriptor.EnumValueDescriptor(
+      name='RET', index=0, number=0,
+      options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='MASTER_ID', index=1, number=1,
+      options=None,
+      type=None),
+  ],
+  containing_type=None,
+  options=None,
+  serialized_start=1585,
+  serialized_end=1618,
+)
+_sym_db.RegisterEnumDescriptor(_RESTYPE)
+
+ResType = enum_type_wrapper.EnumTypeWrapper(_RESTYPE)
 PREPARE = 0
 PROMISE = 1
 ACCEPT = 2
@@ -101,8 +128,11 @@ DECIDE = 4
 LEARN = 5
 TEACH = 6
 COMMIT = 7
-COMMAND = 8
+COMMITTED = 8
+COMMAND = 9
 SET_MASTER = 0
+RET = 0
+MASTER_ID = 1
 
 
 
@@ -201,6 +231,101 @@ _PROPVALUE = _descriptor.Descriptor(
 )
 
 
+_CLIENTVALUE = _descriptor.Descriptor(
+  name='ClientValue',
+  full_name='sgate.ClientValue',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='read', full_name='sgate.ClientValue.read', index=0,
+      number=1, type=8, cpp_type=7, label=2,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='data', full_name='sgate.ClientValue.data', index=1,
+      number=2, type=9, cpp_type=9, label=2,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=195,
+  serialized_end=236,
+)
+
+
+_CLIENTRESVALUE = _descriptor.Descriptor(
+  name='ClientResValue',
+  full_name='sgate.ClientResValue',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='res_type', full_name='sgate.ClientResValue.res_type', index=0,
+      number=1, type=14, cpp_type=8, label=2,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='read', full_name='sgate.ClientResValue.read', index=1,
+      number=2, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='ok', full_name='sgate.ClientResValue.ok', index=2,
+      number=3, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='data', full_name='sgate.ClientResValue.data', index=3,
+      number=4, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='master_id', full_name='sgate.ClientResValue.master_id', index=4,
+      number=5, type=13, cpp_type=3, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=238,
+  serialized_end=347,
+)
+
+
 _MSGPREPARE = _descriptor.Descriptor(
   name='MsgPrepare',
   full_name='sgate.MsgPrepare',
@@ -233,8 +358,8 @@ _MSGPREPARE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=195,
-  serialized_end=264,
+  serialized_start=349,
+  serialized_end=418,
 )
 
 
@@ -291,8 +416,8 @@ _MSGACKPREPARE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=267,
-  serialized_end=419,
+  serialized_start=421,
+  serialized_end=573,
 )
 
 
@@ -335,8 +460,8 @@ _MSGACCEPT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=421,
-  serialized_end=527,
+  serialized_start=575,
+  serialized_end=681,
 )
 
 
@@ -379,8 +504,8 @@ _MSGACKACCEPT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=529,
-  serialized_end=615,
+  serialized_start=683,
+  serialized_end=769,
 )
 
 
@@ -416,8 +541,8 @@ _MSGDECIDE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=617,
-  serialized_end=684,
+  serialized_start=771,
+  serialized_end=838,
 )
 
 
@@ -446,8 +571,8 @@ _MSGLEARN = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=686,
-  serialized_end=734,
+  serialized_start=840,
+  serialized_end=888,
 )
 
 
@@ -483,8 +608,8 @@ _MSGTEACH = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=736,
-  serialized_end=822,
+  serialized_start=890,
+  serialized_end=976,
 )
 
 
@@ -503,7 +628,7 @@ _MSGCOMMIT = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='prop_value', full_name='sgate.MsgCommit.prop_value', index=1,
+      name='cli_value', full_name='sgate.MsgCommit.cli_value', index=1,
       number=2, type=11, cpp_type=10, label=2,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -520,8 +645,45 @@ _MSGCOMMIT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=824,
-  serialized_end=911,
+  serialized_start=978,
+  serialized_end=1066,
+)
+
+
+_MSGACKCOMMIT = _descriptor.Descriptor(
+  name='MsgAckCommit',
+  full_name='sgate.MsgAckCommit',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='msg_header', full_name='sgate.MsgAckCommit.msg_header', index=0,
+      number=1, type=11, cpp_type=10, label=2,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='cli_res_value', full_name='sgate.MsgAckCommit.cli_res_value', index=1,
+      number=2, type=11, cpp_type=10, label=2,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1068,
+  serialized_end=1166,
 )
 
 
@@ -557,8 +719,8 @@ _MSGCOMMAND = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=913,
-  serialized_end=997,
+  serialized_start=1168,
+  serialized_end=1252,
 )
 
 
@@ -608,8 +770,8 @@ _MSGPERIODTRYTIME = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=999,
-  serialized_end=1088,
+  serialized_start=1254,
+  serialized_end=1343,
 )
 
 
@@ -645,12 +807,13 @@ _MSGRESULT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1090,
-  serialized_end=1163,
+  serialized_start=1345,
+  serialized_end=1418,
 )
 
 _MSGHEADER.fields_by_name['msg_type'].enum_type = _MSGTYPE
 _PROPVALUE.fields_by_name['cmd_type'].enum_type = _CMDTYPE
+_CLIENTRESVALUE.fields_by_name['res_type'].enum_type = _RESTYPE
 _MSGPREPARE.fields_by_name['msg_header'].message_type = _MSGHEADER
 _MSGACKPREPARE.fields_by_name['msg_header'].message_type = _MSGHEADER
 _MSGACKPREPARE.fields_by_name['max_prop_value'].message_type = _PROPVALUE
@@ -662,12 +825,16 @@ _MSGLEARN.fields_by_name['msg_header'].message_type = _MSGHEADER
 _MSGTEACH.fields_by_name['msg_header'].message_type = _MSGHEADER
 _MSGTEACH.fields_by_name['prop_value'].message_type = _PROPVALUE
 _MSGCOMMIT.fields_by_name['msg_header'].message_type = _MSGHEADER
-_MSGCOMMIT.fields_by_name['prop_value'].message_type = _PROPVALUE
+_MSGCOMMIT.fields_by_name['cli_value'].message_type = _CLIENTVALUE
+_MSGACKCOMMIT.fields_by_name['msg_header'].message_type = _MSGHEADER
+_MSGACKCOMMIT.fields_by_name['cli_res_value'].message_type = _CLIENTRESVALUE
 _MSGCOMMAND.fields_by_name['msg_header'].message_type = _MSGHEADER
 _MSGCOMMAND.fields_by_name['cmd_type'].enum_type = _CMDTYPE
 _MSGRESULT.fields_by_name['msg_ptt'].message_type = _MSGPERIODTRYTIME
 DESCRIPTOR.message_types_by_name['MsgHeader'] = _MSGHEADER
 DESCRIPTOR.message_types_by_name['PropValue'] = _PROPVALUE
+DESCRIPTOR.message_types_by_name['ClientValue'] = _CLIENTVALUE
+DESCRIPTOR.message_types_by_name['ClientResValue'] = _CLIENTRESVALUE
 DESCRIPTOR.message_types_by_name['MsgPrepare'] = _MSGPREPARE
 DESCRIPTOR.message_types_by_name['MsgAckPrepare'] = _MSGACKPREPARE
 DESCRIPTOR.message_types_by_name['MsgAccept'] = _MSGACCEPT
@@ -676,11 +843,13 @@ DESCRIPTOR.message_types_by_name['MsgDecide'] = _MSGDECIDE
 DESCRIPTOR.message_types_by_name['MsgLearn'] = _MSGLEARN
 DESCRIPTOR.message_types_by_name['MsgTeach'] = _MSGTEACH
 DESCRIPTOR.message_types_by_name['MsgCommit'] = _MSGCOMMIT
+DESCRIPTOR.message_types_by_name['MsgAckCommit'] = _MSGACKCOMMIT
 DESCRIPTOR.message_types_by_name['MsgCommand'] = _MSGCOMMAND
 DESCRIPTOR.message_types_by_name['MsgPeriodTryTime'] = _MSGPERIODTRYTIME
 DESCRIPTOR.message_types_by_name['MsgResult'] = _MSGRESULT
 DESCRIPTOR.enum_types_by_name['MsgType'] = _MSGTYPE
 DESCRIPTOR.enum_types_by_name['CmdType'] = _CMDTYPE
+DESCRIPTOR.enum_types_by_name['ResType'] = _RESTYPE
 
 MsgHeader = _reflection.GeneratedProtocolMessageType('MsgHeader', (_message.Message,), dict(
   DESCRIPTOR = _MSGHEADER,
@@ -695,6 +864,20 @@ PropValue = _reflection.GeneratedProtocolMessageType('PropValue', (_message.Mess
   # @@protoc_insertion_point(class_scope:sgate.PropValue)
   ))
 _sym_db.RegisterMessage(PropValue)
+
+ClientValue = _reflection.GeneratedProtocolMessageType('ClientValue', (_message.Message,), dict(
+  DESCRIPTOR = _CLIENTVALUE,
+  __module__ = 'sgate_pb2'
+  # @@protoc_insertion_point(class_scope:sgate.ClientValue)
+  ))
+_sym_db.RegisterMessage(ClientValue)
+
+ClientResValue = _reflection.GeneratedProtocolMessageType('ClientResValue', (_message.Message,), dict(
+  DESCRIPTOR = _CLIENTRESVALUE,
+  __module__ = 'sgate_pb2'
+  # @@protoc_insertion_point(class_scope:sgate.ClientResValue)
+  ))
+_sym_db.RegisterMessage(ClientResValue)
 
 MsgPrepare = _reflection.GeneratedProtocolMessageType('MsgPrepare', (_message.Message,), dict(
   DESCRIPTOR = _MSGPREPARE,
@@ -751,6 +934,13 @@ MsgCommit = _reflection.GeneratedProtocolMessageType('MsgCommit', (_message.Mess
   # @@protoc_insertion_point(class_scope:sgate.MsgCommit)
   ))
 _sym_db.RegisterMessage(MsgCommit)
+
+MsgAckCommit = _reflection.GeneratedProtocolMessageType('MsgAckCommit', (_message.Message,), dict(
+  DESCRIPTOR = _MSGACKCOMMIT,
+  __module__ = 'sgate_pb2'
+  # @@protoc_insertion_point(class_scope:sgate.MsgAckCommit)
+  ))
+_sym_db.RegisterMessage(MsgAckCommit)
 
 MsgCommand = _reflection.GeneratedProtocolMessageType('MsgCommand', (_message.Message,), dict(
   DESCRIPTOR = _MSGCOMMAND,

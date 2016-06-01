@@ -8,6 +8,10 @@ host:
   - name: node3
     addr: localhost
     port: 8883
+client:
+  - name: client1
+    addr: localhost
+    port: 4441
 lease:
   master_id: 0
   period: 500

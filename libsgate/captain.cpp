@@ -12,71 +12,20 @@
 
 namespace sgate {
 
-Captain::Captain(View &view)
-  : view_(&view), 
-    max_chosen_(0), max_chosen_without_hole_(0), max_slot_(0),
-    value_id_(view_->whoami()), window_size_(1),
-    callback_(NULL), callback_full_(NULL), callback_latency_(NULL), 
-    work_(true) {
-
-  chosen_values_.push_back(NULL);
-  acceptors_.push_back(NULL);
-}
-
-Captain::Captain(View &view, pool *pool)
-  : view_(&view), 
-    max_chosen_(0), max_chosen_without_hole_(0), max_slot_(0),
-    value_id_(view_->whoami()), window_size_(1),
-    callback_(NULL), callback_full_(NULL), callback_latency_(NULL), 
-    work_(true) {
-
-  commo_ = new Commo(this, view, pool);
-  chosen_values_.push_back(NULL);
-  acceptors_.push_back(NULL);
-}
-
-Captain::Captain(View &view, pool *pool, callback_t& callback)
-  : view_(&view), 
-    max_chosen_(0), max_chosen_without_hole_(0), max_slot_(0),
-    value_id_(view_->whoami()), window_size_(1),
-    callback_(NULL), callback_full_(NULL), callback_latency_(NULL), 
-    work_(true) {
-
-  commo_ = new Commo(this, view, pool);
-  chosen_values_.push_back(NULL);
-  acceptors_.push_back(NULL);
-}
-// no thread pool
-Captain::Captain(View &view, callback_t& callback)
-  : view_(&view), 
-    max_chosen_(0), max_chosen_without_hole_(0), max_slot_(0),
-    value_id_(view_->whoami()), window_size_(1),
-    callback_(callback), callback_full_(NULL), callback_latency_(NULL), 
-    work_(true) {
-
-  commo_ = new Commo(this, view);
-  chosen_values_.push_back(NULL);
-  acceptors_.push_back(NULL);
-}
-
 // now using this 
 Captain::Captain(View &view, int window_size)
   : view_(&view), 
     max_chosen_(0), max_chosen_without_hole_(0), max_slot_(0),
-    value_id_(view_->whoami()), window_size_(window_size),
-    callback_(NULL), callback_full_(NULL), callback_latency_(NULL), 
-    work_(true) {
+    window_size_(window_size),
+    callback_(NULL), callback_full_(NULL), callback_latency_(NULL) {
 
-  commo_ = new Commo(this, view);
+//  commo_ = new Commo(this, view);
   chosen_values_.push_back(NULL);
   acceptors_.push_back(NULL);
 }
 
-
 Captain::~Captain() {
 }
-
-
 
 void Captain::set_callback(callback_t& cb) { 
   callback_ = cb;
@@ -93,9 +42,9 @@ void Captain::set_callback(callback_latency_t& cb) {
 /** 
  * return node_id
  */
-node_id_t Captain::get_node_id() {
-  return view_->whoami();
-}
+//node_id_t Captain::get_node_id() {
+//  return view_->whoami();
+//}
 
 /**
  * set commo_handler 
@@ -104,144 +53,13 @@ void Captain::set_commo(Commo *commo) {
   commo_ = commo;
 }
 
-/**
- * set set thread_pool handler 
- */
-//void Captain::set_thread_pool(ThreadPool *pool) {
-//  pool_ = pool; 
-//}
-/** 
- * client commits one value to captain
- * TODO need to change by window_size
- */
-void Captain::commit_recover() {
-
-//  LOG_DEBUG_CAP("<commit_recover> Start");
-//
-//  tocommit_values_mutex_.lock();
-//
-////  try_time_ = 0;
-//
-//  LOG_DEBUG_CAP("(tocommit_values_.size):%lu", tocommit_values_.size());
-//  if (!tocommit_values_.empty()) {
-//    tocommit_values_mutex_.unlock();
-//    return;
-//  } 
-////  if (proposer_status_ < EMPTY) {
-////    tocommit_values_mutex_.unlock();
-////    return;
-////  }
-//  tocommit_values_mutex_.unlock();
-//
-//  curr_value_mutex_.lock();
-//  std::string recover = "RECOVER From Node_ID_" + std::to_string(view_->whoami());
-//  curr_value_->set_data(recover);
-//  LOG_DEBUG_CAP("(view_->whoami()):%u", view_->whoami());
-//  curr_value_->set_id(0);
-//  LOG_DEBUG_CAP("(curr_value) id:%llu data:%s", curr_value_->id(), curr_value_->data().c_str());
-//  LOG_DEBUG_CAP("(max_chosen_):%llu", max_chosen_);
-//  LOG_DEBUG_CAP("(max_chosen_without_hole_):%llu", max_chosen_without_hole_);
-//  curr_value_mutex_.unlock();
-//
-//  // start a new instance
-//  new_slot();
-}
-
-void Captain::set_timer(int period, PropValue* prop_value) {
-  usleep(period * 1000);
-  value_id_t old_id = prop_value->id();
-  if(commit_readys_.find(old_id) != commit_readys_.end() && commit_readys_[old_id] == false) {
-    // timeout occured! send a command annoucing I'm the new master
-//    MsgCommand *msg_cmd = msg_command(); 
-//    handle_msg(msg_cmd, COMMAND);
-//    commo_->broadcast_msg(msg_cmd, COMMAND); 
-
-    LOG_INFO_CAP("the original master:%u does not respond, start changing to:%u", view_->master_id(), view_->whoami());
-    PropValue *prop_cmd = new PropValue();
-    prop_cmd->set_cmd_type(SET_MASTER);
-    value_id_mutex_.lock();
-    value_id_ += (1 << 16);
-    value_id_t id = value_id_;
-    prop_cmd->set_id(value_id_);
-    value_id_mutex_.unlock();
-
-    std::string command = "set_master Time_" + std::to_string(id >> 16) + " from " + view_->hostname();
-    prop_cmd->set_data(command);
-    commit(prop_cmd);
-    // start waiting until being notified
-//    LOG_INFO_CAP("Start Waiting");
-    {
-      boost::unique_lock<boost::mutex> lock(commit_mutexs_[id]);
-      commit_readys_[id] = false;
-      while(!commit_readys_[id]) {
-        commit_conds_[id].wait(lock);
-      }
-    }
-
-//    LOG_INFO_CAP("Waiting Over");
-
-    commit_mutexs_.erase(id);
-    commit_conds_.erase(id);
-    commit_readys_.erase(id);
-    
-    // changing OK, commit true value and notify the blocking 
-//    LOG_INFO_CAP("recommit");
-    commit(prop_value);
-//    LOG_INFO_CAP("recommit over");
-
-    {
-      boost::lock_guard<boost::mutex> lock(commit_mutexs_[old_id]);
-      commit_readys_[old_id] = true;
-    }
-    commit_conds_[old_id].notify_one();
-  }
-}
-
-void Captain::commit(std::string& data) {
-
-  PropValue *prop_value = new PropValue();
-  prop_value->set_data(data);
-  value_id_mutex_.lock();
-  value_id_ += (1 << 16);
-  value_id_t id = value_id_;
-  prop_value->set_id(value_id_);
-  value_id_mutex_.unlock();
-
-  if (view_->if_master()) {
-    commit(prop_value);
-  } else {
-//    std::cout << "Begin mutexs_size !!!!" << commit_mutexs_.size() << std::endl;
-//    std::cout << "Begin conds_size !!!!" << commit_conds_.size() << std::endl;
-//    std::cout << "Begin readys_size !!!!" << commit_readys_.size() << std::endl;
-
-    MsgCommit *msg_com = msg_commit(prop_value);
-    commo_->send_one_msg(msg_com, COMMIT, view_->master_id());
-    boost::thread timer(boost::bind(&Captain::set_timer, this, view_->period(), prop_value));
-    {
-      boost::unique_lock<boost::mutex> lock(commit_mutexs_[id]);
-      commit_readys_[id] = false;
-      while(!commit_readys_[id]) {
-        commit_conds_[id].wait(lock);
-      }
-    }
-
-//    std::cout << "Here!!!!" << std::endl;
-    commit_mutexs_.erase(id);
-    commit_conds_.erase(id);
-    commit_readys_.erase(id);
-  }
-}
-
 void Captain::commit(PropValue* prop_value) {
 
   LOG_DEBUG_CAP("<commit_value> Start");
   LOG_DEBUG_CAP("(proposers_.size):%lu content:", proposers_.size());
-//  for (std::map<slot_id_t, proposer_info_t *>::iterator it = proposers_.begin(); it != proposers_.end(); it++) {
-//    LOG_DEBUG_CAP("slot_id %llu", it->first);
-//  }
 
   if (proposers_.size() > window_size_) {
-    LOG_INFO_CAP("Error Occur!!!! proposers_.size() %llu > window_size! %llu", proposers_.size(), window_size_);
+    LOG_INFO_CAP("Error Occur!!!! proposers_.size() %lu > window_size! %llu", proposers_.size(), window_size_);
     return;
   }
 
@@ -279,154 +97,10 @@ void Captain::commit(PropValue* prop_value) {
 
 }
 
-/** 
- * client commits one value to captain
- */
-void Captain::commit_value(std::string& data) {
-
-  LOG_DEBUG_CAP("<commit_value> Start");
-  LOG_DEBUG_CAP("(proposers_.size):%lu content:", proposers_.size());
-  for (std::map<slot_id_t, proposer_info_t *>::iterator it = proposers_.begin(); it != proposers_.end(); it++) {
-    LOG_DEBUG_CAP("slot_id %llu", it->first);
-  }
-
-  if (proposers_.size() > window_size_) {
-    LOG_INFO_CAP("Error Occur!!!! proposers_.size() %llu > window_size! %llu", proposers_.size(), window_size_);
-    return;
-  }
-
-  PropValue *prop_value = new PropValue();
-  prop_value->set_data(data);
-  value_id_mutex_.lock();
-  value_id_ += (1 << 16);
-  prop_value->set_id(value_id_);
-  value_id_mutex_.unlock();
-
-  // if all proposers are active, push commit value into waiting queue(tocommit_values)
-
-  proposers_mutex_.lock();
-
-  if (proposers_.size() == window_size_) {
-//    tocommit_values_mutex_.lock();
-    tocommit_values_.push(prop_value);
-//    tocommit_values_mutex_.unlock();
-
-    proposers_mutex_.unlock();
-    return;
-  } 
-  
-//  tocommit_values_mutex_.lock();
-  // if there exits at least one proposer unactive, but queue has uncommitted values, commit from queue first
-  if (tocommit_values_.size() > 0) {
-    tocommit_values_.push(prop_value);
-    prop_value = tocommit_values_.front();
-    tocommit_values_.pop();
-  }
-//  tocommit_values_mutex_.unlock();
-
-  proposer_info_t *prop_info = new proposer_info_t(1);
-  prop_info->curr_proposer = new Proposer(*view_, *prop_value); 
-
-
-  max_slot_++;
-  proposers_[max_slot_] = prop_info;
-  MsgPrepare *msg_pre = proposers_[max_slot_]->curr_proposer->msg_prepare();
-  proposers_[max_slot_]->proposer_status = INIT;
-  msg_pre->mutable_msg_header()->set_slot_id(max_slot_);
-
-  proposers_mutex_.unlock();
-
-  commo_->broadcast_msg(msg_pre, PREPARE);
-
-//  new_slot(prop_value, 0);
-}
-
-/**
- * captain starts phaseI
- */
-void Captain::new_slot(PropValue *prop_value, int try_time) {
-
-  proposer_info_t *prop_info = new proposer_info_t(try_time);
-  prop_info->curr_proposer = new Proposer(*view_, *prop_value); 
-
-  proposers_mutex_.lock();
-
-  max_slot_++;
-  slot_id_t slot_id = max_slot_;
-
-  proposers_[slot_id] = prop_info;
-  MsgPrepare *msg_pre = proposers_[slot_id]->curr_proposer->msg_prepare();
-  // mark as INIT
-  proposers_[slot_id]->proposer_status = INIT;
-
-  proposers_mutex_.unlock();
-
-  // always captain set slot_id for msg
-  msg_pre->mutable_msg_header()->set_slot_id(slot_id);
-
-  commo_->broadcast_msg(msg_pre, PREPARE);
-}
-
-/**
- * captain starts phaseI
- */
-void Captain::new_slot(PropValue *prop_value, int try_time, slot_id_t old_slot) {
-  // new proposer
-//  work_mutex_.lock();
-//  if (work_ == false) {
-//    LOG_DEBUG_CAP("%snew_slot I'm DEAD --NodeID %u of new_slot", BAK_RED, view_->whoami());
-//    work_mutex_.unlock();
-//    return;
-//  }
-//  work_mutex_.unlock();
-
-  LOG_TRACE_CAP("<new_slot> Start");
-
-  proposer_info_t *prop_info = new proposer_info_t(try_time);
-  prop_info->curr_proposer = new Proposer(*view_, *prop_value); 
-
-  proposers_mutex_.lock();
-
-  proposers_.erase(old_slot);
-
-  max_slot_++;
-  slot_id_t slot_id = max_slot_;
-
-  proposers_[slot_id] = prop_info;
-  MsgPrepare *msg_pre = proposers_[slot_id]->curr_proposer->msg_prepare();
-  // mark as INIT
-  proposers_[slot_id]->proposer_status = INIT;
-
-  proposers_mutex_.unlock();
-
-  // always captain set slot_id for msg
-  msg_pre->mutable_msg_header()->set_slot_id(slot_id);
-
-  LOG_TRACE_CAP("<new_slot> call <broadcast_msg> with (msg_type):PREPARE");
-  commo_->broadcast_msg(msg_pre, PREPARE);
-  LOG_TRACE_CAP("<new_slot> call <broadcast_msg> Over");
-}
-
-/**
- * handle message from commo, all kinds of message
- */
-//void Captain::handle_msg(google::protobuf::Message *msg, MsgType msg_type) {
-////  pool_->enqueue(&Captain::handle_msg_thread, msg, msg_type);
-//  pool_->enqueue(std::bind(&Captain::handle_msg_thread, this, msg, msg_type));
-//}
-
 /**
  * handle message from commo, all kinds of message
  */
 void Captain::handle_msg(google::protobuf::Message *msg, MsgType msg_type) {
-
-  work_mutex_.lock();
-  if (work_ == false) {
-    LOG_DEBUG_CAP("%sI'm DEAD --NodeID %u", BAK_RED, view_->whoami());
-    work_mutex_.unlock();
-    return;
-  }
-  work_mutex_.unlock();
 
   LOG_TRACE_CAP("<handle_msg> Start (msg_type):%d", msg_type);
 
@@ -684,7 +358,6 @@ void Captain::handle_msg(google::protobuf::Message *msg, MsgType msg_type) {
 
             commo_->broadcast_msg(msg_dec, DECIDE);
 
-//            new_slot(init_value, try_time, slot_id);
             LOG_INFO_CAP("Recommit the same (value):%s try_time :%d!!!", init_value->data().c_str(), try_time);
             commo_->broadcast_msg(msg_pre, PREPARE);
             
@@ -770,45 +443,56 @@ void Captain::handle_msg(google::protobuf::Message *msg, MsgType msg_type) {
       // captain should handle this message
 
       MsgCommit *msg_com = (MsgCommit *)msg;
-
-      if (view_->if_master()) {
-        LOG_INFO_CAP("%s(msg_type):COMMIT from (node_id):%u --NodeID %u handle", 
-                    UND_YEL, msg_com->msg_header().node_id(), view_->whoami());
-        commo_->send_one_msg(msg_com, COMMIT, msg_com->msg_header().node_id());
-        commit(msg_com->mutable_prop_value());
-      } else {
-        value_id_t id = msg_com->mutable_prop_value()->id();
-        LOG_DEBUG_CAP("%s(msg_type):Reply_COMMIT from (node_id):%u --NodeID %u handle", 
-                    UND_YEL, msg_com->msg_header().node_id(), view_->whoami());
-//        std::cout << "I received reply of committing id: " << id << std::endl; 
-        {
-          boost::lock_guard<boost::mutex> lock(commit_mutexs_[id]);
-          commit_readys_[id] = true;
-        }
-        commit_conds_[id].notify_one();
-//        std::cout << "I notify " << id << std::endl; 
+      node_id_t client_id = msg_com->msg_header().node_id();
+      slot_id_t counter = msg_com->msg_header().slot_id();
+      
+      bool read =  msg_com->cli_value().read();
+      if (read) {
+        // return results!
+        LOG_INFO_CAP("Read ! return!");
+        return;
       }
 
+      if (view_->if_master()) {
+        LOG_DEBUG_CAP("%s(msg_type):COMMIT from (node_id):%u --NodeID %u handle", 
+                    UND_YEL, msg_com->msg_header().node_id(), view_->whoami());
 
+        value_id_t value_id = client_id;
+        value_id = (value_id << 32) + counter;
+
+        PropValue *prop_value = new PropValue();
+        prop_value->set_data(msg_com->cli_value().data());
+        prop_value->set_id(value_id);
+        
+        commit(prop_value);
+
+      } else {
+
+        // not master tell client the master 
+        MsgHeader *msg_header = new MsgHeader();
+        msg_header->set_msg_type(MsgType::COMMITTED);
+        msg_header->set_node_id(view_->whoami());
+        msg_header->set_slot_id(counter);
+      
+        ClientResValue *cli_res_value = new ClientResValue();
+        cli_res_value->set_res_type(ResType::MASTER_ID);
+        cli_res_value->set_master_id(view_->master_id());
+        cli_res_value->set_data(msg_com->cli_value().data());
+      
+        MsgAckCommit *msg_ack_com = new MsgAckCommit();
+        msg_ack_com->set_allocated_msg_header(msg_header);
+        msg_ack_com->set_allocated_cli_res_value(cli_res_value);
+        
+        LOG_DEBUG_CAP("%s(msg_type):Reply_COMMIT from client_(node_id):%u --NodeID %u handle", 
+                    UND_YEL, client_id, view_->whoami());
+        commo_->send_one_msg(msg_ack_com, COMMITTED, client_id);
+      }
       break;
     }
 
     case COMMAND: {
       // captain should handle this message
       // not using this!!!!!
-
-//      MsgCommand *msg_cmd = (MsgCommand *)msg;
-//
-//      switch (msg_cmd->cmd_type()) {
-//        case SET_MASTER: {
-//          LOG_INFO_CAP("This should never happen!!!! COMMAND");
-//          view_->set_master(msg_cmd->msg_header().node_id());
-//          break;
-//        }
-//      }
-//      LOG_DEBUG_CAP("%s(msg_type):COMMAND from (node_id):%u --NodeID %u handle", 
-//                    UND_YEL, msg_cmd->msg_header().node_id(), view_->whoami());
-
       break;
     }
     default: 
@@ -861,17 +545,6 @@ MsgTeach *Captain::msg_teach(slot_id_t slot_id) {
 }
 
 /**
- * Return Commit Message
- */
-MsgCommit *Captain::msg_commit(PropValue *prop_value) {
-  MsgHeader *msg_header = set_msg_header(MsgType::COMMIT, 0);
-  MsgCommit *msg_com = new MsgCommit();
-  msg_com->set_allocated_msg_header(msg_header);
-  msg_com->set_allocated_prop_value(prop_value);
-  return msg_com; 
-}
-
-/**
  * Return Command Message
  */
 MsgCommand *Captain::msg_command() {
@@ -885,46 +558,22 @@ MsgCommand *Captain::msg_command() {
 /** 
  * Callback function after commit_value  
  */
-void Captain::clean() {
-//  curr_proposer_mutex_.lock();
-//  if (curr_proposer_) { 
-////    delete curr_proposer_;
-//    curr_proposer_ = NULL;
-//  }
-//  curr_proposer_mutex_.unlock();
-}
-
-void Captain::crash() {
-  work_mutex_.lock();
-  work_ = false;
-//  curr_proposer_mutex_.lock();
-//  curr_proposer_ = NULL;
-//  curr_proposer_mutex_.unlock();
-  work_mutex_.unlock();
-}
-
-void Captain::recover() {
+//void Captain::clean() {
+//
+//}
+//
+//void Captain::crash() {
 //  work_mutex_.lock();
-//  work_ = true;
+//  work_ = false;
 //  work_mutex_.unlock();
+//}
 //
-//  LOG_INFO("Recover triggered! Node_ID %u", view_->whoami());
+//void Captain::recover() {
+//}
 //
-//  if (proposer_status_ == EMPTY) {
-//    commit_recover();
-//
-//    return;
-//  }
-//  new_slot(); 
-//  if (proposer_status_ == EMPTY && max_chosen_without_hole_ < max_chosen_) {
-//    commit_recover();
-//
-//  }
-}
-
-bool Captain::get_status() {
-  return work_;
-}
+//bool Captain::get_status() {
+//  return work_;
+//}
 
 void Captain::print_chosen_values() {
   LOG_INFO_CAP("%s%sNodeID:%u (chosen_values_): %s", BAK_BLU, TXT_WHT, view_->whoami(), NRM);
@@ -1018,6 +667,30 @@ void Captain::add_callback() {
         }
       }
     } 
+
+    // return here! exe
+    slot_id_t id = prop_value->id();
+    node_id_t client_id = node_id_t(id >> 32);
+    slot_id_t counter = node_id_t(prop_value->id());
+
+    MsgHeader *msg_header = new MsgHeader();
+    msg_header->set_msg_type(MsgType::COMMITTED);
+    msg_header->set_node_id(view_->whoami());
+    msg_header->set_slot_id(counter);
+    
+    ClientResValue *cli_res_value = new ClientResValue();
+    cli_res_value->set_res_type(ResType::RET);
+    cli_res_value->set_read(false);
+    cli_res_value->set_ok(true);
+    
+    MsgAckCommit *msg_ack_com = new MsgAckCommit();
+    msg_ack_com->set_allocated_msg_header(msg_header);
+    msg_ack_com->set_allocated_cli_res_value(cli_res_value);
+    
+    LOG_DEBUG_CAP("%s(msg_type):Reply_COMMIT from client_(node_id):%u --NodeID %u handle", 
+                UND_YEL, client_id, view_->whoami());
+    commo_->send_one_msg(msg_ack_com, COMMITTED, client_id);
+
 
     if (callback_full_) {
       node_id_t node_id = node_id_t(prop_value->id()); 

@@ -6,77 +6,61 @@
 
 #include "commo.hpp"
 #include "captain.hpp"
+#include "client.hpp"
 #include <iostream>
 
 namespace sgate {
-// Old Version
-Commo::Commo(std::vector<Captain *> &captains) 
-  : captains_(captains), context_(1) {
-//  for (uint32_t i = 0; i < captains_.size(); i++) {
-////    senders_.push_back(new zmq::socket_t(context_, ZMQ_DEALER));
-//  }
-//  pool_ = new pool(1);
-}
-
-Commo::Commo(Captain *captain, View &view, pool *pl) 
-  : captain_(captain), view_(&view), pool_(pl), context_(1), 
-    senders_mutexs_(view_->nodes_size()) {
-}
 
 Commo::Commo(Captain *captain, View &view) 
-  : captain_(captain), view_(&view), context_(1), 
-    senders_mutexs_(view_->nodes_size()) {
-  
-
-//  int sndhwm = 0;
-  int immediate = 1;
-  int handshake = 0;
+  : captain_(captain), view_(&view), context_(1) {
 
   LOG_INFO_COM("%s Init START", view_->hostname().c_str());
-
-
   for (uint32_t i = 0; i < view_->nodes_size(); i++) {
     senders_.push_back(new zmq::socket_t(context_, ZMQ_DEALER));
     senders_address_.push_back("");
-    senders_state_.push_back(-1);
+//    senders_state_.push_back(-1);
 
-//    int port = 44440 + i;
     std::string identity = view_->hostname();
     senders_[i]->setsockopt(ZMQ_IDENTITY, identity.c_str(), identity.size());
-//    senders_[i]->setsockopt(ZMQ_SNDHWM, &sndhwm, sizeof(sndhwm));
-//    senders_[i]->setsockopt(ZMQ_IMMEDIATE, &immediate, sizeof(immediate));
-//    senders_[i]->setsockopt(ZMQ_HANDSHAKE_IVL, &handshake, sizeof(handshake));
-//    senders_[i]->setsockopt(ZMQ_CONFLATE, &immediate, sizeof(immediate));
+
 
     std::string address = "tcp://" + view_->address(i) + ":" + std::to_string(view_->port(i));
     LOG_INFO_COM("Connect to address %s, host_name %s", address.c_str(), view_->hostname(i).c_str());
     senders_address_[i] = address;
     senders_[i]->connect(address.c_str());
-//    senders_state_[i] = zmq_connect(senders_[i], address.c_str());
-//    if (senders_state_[i] < 0)
-//      LOG_INFO_COM("Node_ID: %lu does NOT connect!", i);
   }
-  pool_ = new pool(2);
-//  self_pool_ = new pool(1);
-//  self_pool_->schedule(boost::bind(&Commo::waiting_msg, this));
+  pool_ = new pool(1);
   receiver_ = new zmq::socket_t(context_, ZMQ_ROUTER);
-//  receiver_->setsockopt(ZMQ_SNDHWM, &sndhwm, sizeof(sndhwm));
-//  receiver_->setsockopt(ZMQ_IMMEDIATE, &immediate, sizeof(immediate));
   std::string address = "tcp://*:" + std::to_string(view_->port());
   LOG_INFO_COM("My address %s, host_name %s", address.c_str(), view_->hostname().c_str());
   receiver_->bind(address.c_str());
-  boost::thread listen(boost::bind(&Commo::waiting_msg, this)); 
+//  boost::thread listen(boost::bind(&Commo::waiting_msg, this)); 
 }
 
+Commo::Commo(Client *client, View &view) 
+  : client_(client), view_(&view), context_(1) {
+
+  LOG_INFO_COM("%s Init START for Client", view_->hostname().c_str());
+
+  for (uint32_t i = 0; i < view_->nodes_size(); i++) {
+    senders_.push_back(new zmq::socket_t(context_, ZMQ_DEALER));
+    senders_address_.push_back("");
+//    senders_state_.push_back(-1);
+
+    std::string identity = view_->hostname();
+    senders_[i]->setsockopt(ZMQ_IDENTITY, identity.c_str(), identity.size());
+
+    std::string address = "tcp://" + view_->address(i) + ":" + std::to_string(view_->port(i));
+    LOG_INFO_COM("Connect to address %s, host_name %s", address.c_str(), view_->hostname(i).c_str());
+    senders_address_[i] = address;
+    senders_[i]->connect(address.c_str());
+  }
+  boost::thread listen(boost::bind(&Commo::client_waiting_msg, this)); 
+}
 Commo::~Commo() {
 }
 
 void Commo::waiting_msg() {
-
-//  zmq::pollitem_t items [] = {
-//      { receiver, 0, ZMQ_POLLIN, 0 },
-//      { subscriber, 0, ZMQ_POLLIN, 0 }
-//  };
 
   std::vector<zmq::pollitem_t> items(1 + view_->nodes_size());
   items[0].socket = (void *)(*receiver_);
@@ -99,11 +83,9 @@ void Commo::waiting_msg() {
         zmq::message_t request;
         //  Wait for next request from client
         if (i == 0) {
-//          receiver_mutex_.lock();
           while (receiver_->recv(&identity, ZMQ_DONTWAIT) > 0) {
 
             receiver_->recv(&request);
-//            receiver_mutex_.unlock();
 
             int size_id = identity.size();
             std::string data_id(static_cast<char*>(identity.data()), size_id);
@@ -112,14 +94,45 @@ void Commo::waiting_msg() {
           }
         }
         else {
-//          senders_mutexs_[i - 1].lock();
           while (senders_[i - 1]->recv(&request, ZMQ_DONTWAIT) > 0) {
-//          senders_mutexs_[i - 1].unlock();
             LOG_DEBUG_COM("senders_[%d] received!", i - 1);
             deal_msg(request);
           }
         } 
 
+      }
+    }
+  }
+}
+
+void Commo::client_waiting_msg() {
+
+  std::vector<zmq::pollitem_t> items(view_->nodes_size());
+
+  for (int i = 0; i < view_->nodes_size(); i++) {
+    items[i].socket = (void *)(*senders_[i]);
+    items[i].events = ZMQ_POLLIN; 
+  }
+
+  while (true) {
+
+    zmq::poll(&items[0], items.size(), -1);
+
+    for (int i = 0; i < view_->nodes_size(); i ++) {
+      if (items[i].revents & ZMQ_POLLIN) {
+        zmq::message_t request;
+        while (senders_[i]->recv(&request, ZMQ_DONTWAIT) > 0) {
+          LOG_DEBUG_COM("senders_[%d] received!", i);
+          std::string msg_str(static_cast<char*>(request.data()), request.size());
+          MsgAckCommit *msg = new MsgAckCommit();
+          msg_str.pop_back();
+          msg->ParseFromString(msg_str);
+          std::string text_str;
+          google::protobuf::TextFormat::PrintToString(*msg, &text_str);
+          LOG_DEBUG_COM("Received %s", text_str.c_str());
+          client_->handle_reply(msg);
+          LOG_DEBUG("Handle finish!");
+        }
       }
     }
   }
@@ -167,6 +180,8 @@ void Commo::deal_msg(zmq::message_t &request) {
       msg = new MsgCommand();
       break;
     }
+    default: 
+      break;
   }
   msg_str.pop_back();
   msg->ParseFromString(msg_str);
@@ -200,9 +215,7 @@ void Commo::broadcast_msg(google::protobuf::Message *msg, MsgType msg_type) {
     zmq::message_t request(msg_str.size());
     memcpy((void *)request.data(), msg_str.c_str(), msg_str.size());
     LOG_DEBUG_COM("Broadcast to --%s (msg_type):%d", view_->hostname(i).c_str(), msg_type);
-//    senders_mutexs_[i].lock(); 
     senders_[i]->send(request, ZMQ_DONTWAIT);
-//    senders_mutexs_[i].unlock(); 
     LOG_DEBUG_COM("Broadcast to --%s (msg_type):%d finished", view_->hostname(i).c_str(), msg_type);
   }
 
@@ -219,11 +232,9 @@ void Commo::send_one_msg(google::protobuf::Message *msg, MsgType msg_type, node_
   zmq::message_t request(msg_str.size());
   memcpy((void *)request.data(), msg_str.c_str(), msg_str.size());
 
-  if (msg_type == ACCEPT || ((msg_type == COMMIT) && (node_id == view_->master_id()))) {
+  if ((msg_type == TEACH) || (msg_type == COMMIT)) {
     LOG_DEBUG_COM("senders[%d] send request", node_id);
-//    senders_mutexs_[node_id].lock(); 
     senders_[node_id]->send(request, ZMQ_DONTWAIT);
-//    senders_mutexs_[node_id].unlock(); 
     LOG_DEBUG_COM("senders[%d] send finish", node_id);
   }
   else { 
@@ -231,10 +242,8 @@ void Commo::send_one_msg(google::protobuf::Message *msg, MsgType msg_type, node_
     zmq::message_t identity(data_id.size());
     memcpy((void *)identity.data(), data_id.c_str(), data_id.size());
     LOG_DEBUG_COM("receiver_ reply request to %s", view_->hostname(node_id).c_str());
-//    receiver_mutex_.lock();
     receiver_->send(identity, ZMQ_SNDMORE);
     receiver_->send(request, ZMQ_DONTWAIT);
-//    receiver_mutex_.unlock();
     LOG_DEBUG_COM("receiver_ reply request to %s finish", view_->hostname(node_id).c_str());
   }
 }

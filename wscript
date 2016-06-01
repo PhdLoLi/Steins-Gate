@@ -55,7 +55,7 @@ def configure(conf):
 def build(bld):
 
     os.system('protoc -I=libsgate --python_out=script libsgate/sgate.proto')
-    bld.stlib(source=bld.path.ant_glob([
+    bld.stlib(source=bld.path.ant_glob(['libsgate/client.cpp',
                                         'libsgate/view.cpp', 'libsgate/proposer.cpp', 'libsgate/acceptor.cpp', 
                                         'libsgate/captain.cpp', 'libsgate/commo.cpp', 'libsgate/*.proto'
                                         ]), 

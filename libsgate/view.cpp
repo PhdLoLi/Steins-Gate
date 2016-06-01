@@ -26,6 +26,7 @@ View::View(node_id_t node_id, std::string cf)
   }
 
 	YAML::Node nodes = config["host"];
+  YAML::Node clients = config["client"];
   YAML::Node lease = config["lease"];
 
   for (std::size_t i = 0; i < nodes.size(); i++) {
@@ -42,6 +43,18 @@ View::View(node_id_t node_id, std::string cf)
     
   size_ = host_nodes_.size();
 
+  for (std::size_t i = 0; i < clients.size(); i++) {
+
+		YAML::Node node = clients[i];
+
+		std::string name = node["name"].as<std::string>();
+		std::string addr = node["addr"].as<std::string>();
+    uint32_t port = node["port"].as<int>();
+    // set a node in view
+    host_info_t host_info = host_info_t(name, addr, port);
+    host_nodes_.push_back(host_info);
+  }
+
   if (lease) {
     master_id_ = lease["master_id"].as<int>();
     period_ = lease["period"].as<int>();
@@ -49,7 +62,7 @@ View::View(node_id_t node_id, std::string cf)
     LOG_INFO("No lease Node Found, using default master_id/0 period/500");
   }
   
-  if (node_id_ >= size_) {
+  if (node_id_ >= host_nodes_.size()) {
     std::cout << "Node_Id " << node_id_ << " > host_nodes_.size " << size_ << "Invalid!" << std::endl;
     std::cout << "Set Node_Id = 0" << std::endl;
     node_id_ = 0;
