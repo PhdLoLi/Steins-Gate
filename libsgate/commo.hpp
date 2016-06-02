@@ -36,7 +36,7 @@ class Commo {
   Captain *captain_;
   Client *client_;
   View *view_;
-  pool *pool_;
+//  pool *pool_;
   zmq::context_t context_;
   zmq::socket_t *receiver_;
 //  zmq::socket_t sender_;

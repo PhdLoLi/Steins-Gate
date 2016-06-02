@@ -200,4 +200,7 @@ PropValue * Proposer::get_init_value() {
   return init_value_;
 }
 
+void Proposer::init_curr_value() {
+  curr_value_ = init_value_;
+}
 }
