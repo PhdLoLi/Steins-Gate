@@ -274,10 +274,20 @@ void Captain::handle_msg(google::protobuf::Message *msg, MsgType msg_type) {
           proposers_mutex_.unlock();
 
           if (chosen_value->id() == init_value->id()) {
+            slot_id_t id = chosen_value->id();
+            node_id_t client_id = node_id_t(id >> 32);
+            slot_id_t counter = uint32_t(chosen_value->id());
+            MsgAckCommit *msg_ack_com = msg_committed(counter);
+  
+            LOG_DEBUG_CAP("%s(msg_type):Reply_COMMIT from client_(node_id):%u --NodeID %u handle", 
+                        UND_YEL, client_id, view_->whoami());
+            commo_->send_one_msg(msg_ack_com, COMMITTED, client_id);
             if (callback_latency_) {
               callback_latency_(slot_id, *chosen_value, try_time);
             }
           }
+          
+
 
           // important change max_chosen & max_chosen
           add_chosen_value(slot_id, chosen_value);
@@ -449,7 +459,13 @@ void Captain::handle_msg(google::protobuf::Message *msg, MsgType msg_type) {
       bool read =  msg_com->cli_value().read();
       if (read) {
         // return results!
-        LOG_INFO_CAP("Read ! return!");
+        LOG_DEBUG_CAP("Read ! return!");
+
+        MsgAckCommit *msg_ack_com = msg_committed(counter);
+        LOG_DEBUG_CAP("%s(msg_type):Reply_COMMIT from client_(node_id):%u --NodeID %u handle", 
+                    UND_YEL, client_id, view_->whoami());
+        commo_->send_one_msg(msg_ack_com, COMMITTED, client_id);
+        
         return;
       }
 
@@ -553,6 +569,26 @@ MsgCommand *Captain::msg_command() {
   msg_cmd->set_allocated_msg_header(msg_header);
   msg_cmd->set_cmd_type(SET_MASTER);
   return msg_cmd; 
+}
+
+/**
+ * Return Committed Message
+ */
+MsgAckCommit *Captain::msg_committed(slot_id_t counter) {
+  MsgHeader *msg_header = new MsgHeader();
+  msg_header->set_msg_type(MsgType::COMMITTED);
+  msg_header->set_node_id(view_->whoami());
+  msg_header->set_slot_id(counter);
+  
+  ClientResValue *cli_res_value = new ClientResValue();
+  cli_res_value->set_res_type(ResType::RET);
+  cli_res_value->set_read(false);
+  cli_res_value->set_ok(true);
+  
+  MsgAckCommit *msg_ack_com = new MsgAckCommit();
+  msg_ack_com->set_allocated_msg_header(msg_header);
+  msg_ack_com->set_allocated_cli_res_value(cli_res_value);
+  return msg_ack_com;
 }
 
 /** 
@@ -669,28 +705,14 @@ void Captain::add_callback() {
     } 
 
     // return here! exe
-    slot_id_t id = prop_value->id();
-    node_id_t client_id = node_id_t(id >> 32);
-    slot_id_t counter = node_id_t(prop_value->id());
-
-    MsgHeader *msg_header = new MsgHeader();
-    msg_header->set_msg_type(MsgType::COMMITTED);
-    msg_header->set_node_id(view_->whoami());
-    msg_header->set_slot_id(counter);
-    
-    ClientResValue *cli_res_value = new ClientResValue();
-    cli_res_value->set_res_type(ResType::RET);
-    cli_res_value->set_read(false);
-    cli_res_value->set_ok(true);
-    
-    MsgAckCommit *msg_ack_com = new MsgAckCommit();
-    msg_ack_com->set_allocated_msg_header(msg_header);
-    msg_ack_com->set_allocated_cli_res_value(cli_res_value);
-    
-    LOG_DEBUG_CAP("%s(msg_type):Reply_COMMIT from client_(node_id):%u --NodeID %u handle", 
-                UND_YEL, client_id, view_->whoami());
-    commo_->send_one_msg(msg_ack_com, COMMITTED, client_id);
-
+//    slot_id_t id = prop_value->id();
+//    node_id_t client_id = node_id_t(id >> 32);
+//    slot_id_t counter = uint32_t(prop_value->id());
+//    MsgAckCommit *msg_ack_com = msg_committed(counter);
+//
+//    LOG_DEBUG_CAP("%s(msg_type):Reply_COMMIT from client_(node_id):%u --NodeID %u handle", 
+//                UND_YEL, client_id, view_->whoami());
+//    commo_->send_one_msg(msg_ack_com, COMMITTED, client_id);
 
     if (callback_full_) {
       node_id_t node_id = node_id_t(prop_value->id()); 

@@ -27,7 +27,6 @@ class Commo {
   void waiting_msg();
   void broadcast_msg(google::protobuf::Message *, MsgType);
   void send_one_msg(google::protobuf::Message *, MsgType, node_id_t);
-  void set_pool(pool *);
   void deal_msg(zmq::message_t &request);
 
   void client_waiting_msg();

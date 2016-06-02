@@ -29,11 +29,14 @@ Commo::Commo(Captain *captain, View &view)
     senders_address_[i] = address;
     senders_[i]->connect(address.c_str());
   }
-  pool_ = new pool(1);
   receiver_ = new zmq::socket_t(context_, ZMQ_ROUTER);
   std::string address = "tcp://*:" + std::to_string(view_->port());
   LOG_INFO_COM("My address %s, host_name %s", address.c_str(), view_->hostname().c_str());
   receiver_->bind(address.c_str());
+
+  if (view_->nodes_size() == 1) {
+//    pool_ = new pool(1);
+  }
 //  boost::thread listen(boost::bind(&Commo::waiting_msg, this)); 
 }
 
@@ -188,23 +191,24 @@ void Commo::deal_msg(zmq::message_t &request) {
   std::string text_str;
   google::protobuf::TextFormat::PrintToString(*msg, &text_str);
   LOG_DEBUG_COM("Received %s", text_str.c_str());
-//    pool_->schedule(boost::bind(&Captain::handle_msg, captain_, msg, static_cast<MsgType>(type)));
   captain_->handle_msg(msg, static_cast<MsgType>(type));
   LOG_DEBUG("Handle finish!");
 }
 
-//void Commo::set_pool(ThreadPool *pool) {
-void Commo::set_pool(pool *pl) {
-  pool_ = pl;
-}
-
 void Commo::broadcast_msg(google::protobuf::Message *msg, MsgType msg_type) {
+
+  if (view_->nodes_size() == 1) {
+  //  pool_->schedule(boost::bind(&Captain::handle_msg, captain_, msg, msg_type));
+    if (msg_type != DECIDE) 
+      captain_->handle_msg(msg, msg_type);
+    return;
+  }
 
   for (uint32_t i = 0; i < view_->nodes_size(); i++) {
     
     if (i == view_->whoami()) {
-      pool_->schedule(boost::bind(&Captain::handle_msg, captain_, msg, msg_type));
-//      captain_->handle_msg(msg, msg_type);
+      if (msg_type != DECIDE)
+        captain_->handle_msg(msg, msg_type);
       continue;
     }
 

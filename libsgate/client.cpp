@@ -13,7 +13,7 @@
 namespace sgate {
 
 Client::Client(node_id_t node_id, int commit_win, int ratio, node_id_t read_node) 
- : node_id_(node_id), com_win_(commit_win), ratio_(ratio), read_node_(read_node), master_id_(0),
+ : node_id_(node_id), com_win_(commit_win), ratio_(ratio), read_node_(read_node), master_id_(1),
    commit_counter_(0), rand_counter_(0), thr_counter_(0), starts_(20000000),
    recording_(false), done_(false) {
 
@@ -174,8 +174,8 @@ void Client::start_commit() {
   
   LOG_INFO("Writing File Now!");
 
-  thr_name = "results/naxos/N_t_" + std::to_string(com_win_) + "_" + std::to_string(ratio_) + "_" + std::to_string(read_node_) + ".txt";
-  lat_name = "results/naxos/N_l_" + std::to_string(com_win_) + "_" + std::to_string(ratio_) + "_" + std::to_string(read_node_) + ".txt";
+  thr_name = "results/N_t_" + std::to_string(com_win_) + "_" + std::to_string(ratio_) + "_" + std::to_string(read_node_) + ".txt";
+  lat_name = "results/N_l_" + std::to_string(com_win_) + "_" + std::to_string(ratio_) + "_" + std::to_string(read_node_) + ".txt";
 
   file_throughput_.open(thr_name);
 
@@ -198,7 +198,7 @@ void Client::start_commit() {
 
 void Client::handle_reply(MsgAckCommit *msg_ack_com) {
   // counting
-  int commit_counter = msg_ack_com->msg_header().slot_id();
+  slot_id_t commit_counter = msg_ack_com->msg_header().slot_id();
   if (msg_ack_com->cli_res_value().res_type() == ResType::RET) {
     if(msg_ack_com->cli_res_value().read()) {
       std::string res =  msg_ack_com->cli_res_value().data();
@@ -247,7 +247,10 @@ void Client::handle_reply(MsgAckCommit *msg_ack_com) {
   } else if (msg_ack_com->cli_res_value().res_type() == ResType::MASTER_ID) {
 
     master_mut_.lock();
-    master_id_ = msg_ack_com->cli_res_value().master_id();
+    if (master_id_ != msg_ack_com->cli_res_value().master_id()) {
+      LOG_INFO("Master ID changed from %u to %u", master_id_, msg_ack_com->cli_res_value().master_id());
+      master_id_ = msg_ack_com->cli_res_value().master_id();
+    }
     std::string value = msg_ack_com->cli_res_value().data();
     MsgCommit *msg_com = msg_commit(commit_counter, false, value);
     commo_->send_one_msg(msg_com, COMMIT, master_id_);

@@ -107,6 +107,12 @@ class Captain {
    */
   MsgCommand *msg_command();
 
+  /**
+   * Return Committed Message
+   */
+  MsgAckCommit *msg_committed(slot_id_t);
+
+
 //  void clean();
 //
 //  void crash();
@@ -150,9 +156,6 @@ class Captain {
   callback_full_t callback_full_;
   // when one value commited by this node is chosen, trigger this
   callback_latency_t callback_latency_;
-
-  // pool no use now
-  pool *pool_;
 
   boost::mutex max_chosen_mutex_;
 
