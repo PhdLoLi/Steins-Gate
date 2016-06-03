@@ -132,7 +132,7 @@ void Client::start_commit() {
   uint64_t before = 0;
   uint64_t throughput = 0;
 
-  for (int j = 0; j < interval * 4; j++) {
+  for (int j = 0; j < interval * 10; j++) {
     LOG_INFO("Time %d", j + 1);
 
     thr_mut_.lock();
