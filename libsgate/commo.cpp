@@ -15,19 +15,23 @@ Commo::Commo(Captain *captain, View &view)
   : captain_(captain), view_(&view), context_(1) {
 
   LOG_INFO_COM("%s Init START", view_->hostname().c_str());
-  for (uint32_t i = 0; i < view_->nodes_size(); i++) {
-    senders_.push_back(new zmq::socket_t(context_, ZMQ_DEALER));
-    senders_address_.push_back("");
-//    senders_state_.push_back(-1);
-
-    std::string identity = view_->hostname();
-    senders_[i]->setsockopt(ZMQ_IDENTITY, identity.c_str(), identity.size());
-
-
-    std::string address = "tcp://" + view_->address(i) + ":" + std::to_string(view_->port(i));
-    LOG_INFO_COM("Connect to address %s, host_name %s", address.c_str(), view_->hostname(i).c_str());
-    senders_address_[i] = address;
-    senders_[i]->connect(address.c_str());
+  if (view_->if_master()) {
+    for (uint32_t i = 0; i < view_->nodes_size(); i++) {
+      senders_.push_back(new zmq::socket_t(context_, ZMQ_DEALER));
+      senders_address_.push_back("");
+  //    senders_state_.push_back(-1);
+  
+      std::string identity = view_->hostname();
+      senders_[i]->setsockopt(ZMQ_IDENTITY, identity.c_str(), identity.size());
+  
+  
+      std::string address = "tcp://" + view_->address(i) + ":" + std::to_string(view_->port(i));
+      senders_address_[i] = address;
+      if (view_->whoami() != i) {
+        LOG_INFO_COM("Connect to address %s, host_name %s", address.c_str(), view_->hostname(i).c_str());
+        senders_[i]->connect(address.c_str());
+      }
+    }
   }
   receiver_ = new zmq::socket_t(context_, ZMQ_ROUTER);
   std::string address = "tcp://*:" + std::to_string(view_->port());
@@ -69,16 +73,20 @@ void Commo::waiting_msg() {
   items[0].socket = (void *)(*receiver_);
   items[0].events = ZMQ_POLLIN;
 
+  int end = 0;
+  if (view_->if_master()) {
   for (int i = 0; i < view_->nodes_size(); i++) {
     items[i + 1].socket = (void *)(*senders_[i]);
     items[i + 1].events = ZMQ_POLLIN; 
+  }
+  end = view_->nodes_size();
   }
 
   while (true) {
 
     zmq::poll(&items[0], items.size(), -1);
 
-    for (int i = 0; i <= view_->nodes_size(); i ++) {
+    for (int i = 0; i <= end; i ++) {
 
       if (items[i].revents & ZMQ_POLLIN) {
           
