@@ -1,2 +1,3 @@
 # Steins-Gate
-My Multi-Paxos
+My Multi-Paxos including "every" aspect. (beta version)
+Read me comming soon...
