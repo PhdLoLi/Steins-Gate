@@ -1,4 +1,7 @@
 host:
+  - name: node0
+    addr: localhost
+    port: 8880
   - name: node1
     addr: localhost
     port: 8881
@@ -11,9 +14,10 @@ host:
   - name: node4
     addr: localhost
     port: 8884
-  - name: node5
+client:
+  - name: client0
     addr: localhost
-    port: 8885
+    port: 4440
 lease:
   master_id: 0
   period: 500

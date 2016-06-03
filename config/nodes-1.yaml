@@ -1,7 +1,11 @@
 host:
-  - name: node1
-    addr: localhost
-    port: 8881
+  - name: node0
+    addr: 192.168.1.100
+    port: 8880
+client:
+  - name: client0
+    addr: 192.168.1.101 
+    port: 4440
 lease:
   master_id: 0
   period: 500
