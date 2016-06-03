@@ -13,7 +13,7 @@
 namespace sgate {
 
 Client::Client(node_id_t node_id, int commit_win, int ratio, node_id_t read_node) 
- : node_id_(node_id), com_win_(commit_win), ratio_(ratio), read_node_(read_node), master_id_(1),
+ : node_id_(node_id), com_win_(commit_win), ratio_(ratio), read_node_(read_node), master_id_(0),
    commit_counter_(0), rand_counter_(0), thr_counter_(0), starts_(20000000),
    recording_(false), done_(false) {
 
@@ -132,7 +132,7 @@ void Client::start_commit() {
   uint64_t before = 0;
   uint64_t throughput = 0;
 
-  for (int j = 0; j < interval * 10; j++) {
+  for (int j = 0; j < interval * 10000; j++) {
     LOG_INFO("Time %d", j + 1);
 
     thr_mut_.lock();
