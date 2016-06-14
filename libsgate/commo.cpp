@@ -20,7 +20,7 @@ Commo::Commo(Captain *captain, View &view)
     senders_address_.push_back("");
 //    senders_state_.push_back(-1);
 
-    std::string identity = view_->hostname();
+    std::string identity = std::to_string(view_->whoami());
     senders_[i]->setsockopt(ZMQ_IDENTITY, identity.c_str(), identity.size());
 
 
@@ -50,7 +50,7 @@ Commo::Commo(Client *client, View &view)
     senders_address_.push_back("");
 //    senders_state_.push_back(-1);
 
-    std::string identity = view_->hostname();
+    std::string identity = std::to_string(view_->whoami());
     senders_[i]->setsockopt(ZMQ_IDENTITY, identity.c_str(), identity.size());
 
     std::string address = "tcp://" + view_->address(i) + ":" + std::to_string(view_->port(i));
@@ -256,7 +256,7 @@ void Commo::send_one_msg(google::protobuf::Message *msg, MsgType msg_type, node_
     LOG_DEBUG_COM("senders[%d] send finish", node_id);
   }
   else { 
-    std::string data_id = view_->hostname(node_id);
+    std::string data_id = std::to_string(node_id);
     zmq::message_t identity(data_id.size());
     memcpy((void *)identity.data(), data_id.c_str(), data_id.size());
     LOG_DEBUG_COM("receiver_ reply request to %s", view_->hostname(node_id).c_str());

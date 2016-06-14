@@ -62,11 +62,11 @@ View::View(node_id_t node_id, std::string cf)
     LOG_INFO("No lease Node Found, using default master_id/0 period/500");
   }
   
-  if (node_id_ >= host_nodes_.size()) {
-    std::cout << "Node_Id " << node_id_ << " > host_nodes_.size " << size_ << "Invalid!" << std::endl;
-    std::cout << "Set Node_Id = 0" << std::endl;
-    node_id_ = 0;
-  }
+//  if (node_id_ >= host_nodes_.size()) {
+//    std::cout << "Node_Id " << node_id_ << " > host_nodes_.size " << size_ << "Invalid!" << std::endl;
+//    std::cout << "Set Node_Id = 0" << std::endl;
+//    node_id_ = 0;
+//  }
   LOG_INFO("config file loaded");
  
 }
@@ -141,9 +141,6 @@ void View::print_host_nodes() {
   std::cout << "-----*-*-*-*-*-*-*-*-*------" << std::endl;
   std::cout << "\t My Node" << std::endl;
   std::cout << "\tNode_ID: " << node_id_ << std::endl;
-  std::cout << "\tName: " << host_nodes_[node_id_].name << std::endl;
-  std::cout << "\tAddr: " << host_nodes_[node_id_].addr << std::endl;
-  std::cout << "\tPort: " << host_nodes_[node_id_].port << std::endl;
   std::cout << "-----*-*-*-*-*-*-*-*-*------\n" << std::endl;
   std::cout << "\t Nodes INFO" << std::endl;
   for (int i = 0; i < size_; i++) {
