@@ -65,48 +65,62 @@ Commo::~Commo() {
 
 void Commo::waiting_msg() {
 
-  std::vector<zmq::pollitem_t> items(1 + view_->nodes_size());
-  items[0].socket = (void *)(*receiver_);
-  items[0].events = ZMQ_POLLIN;
-
-  for (int i = 0; i < view_->nodes_size(); i++) {
-    items[i + 1].socket = (void *)(*senders_[i]);
-    items[i + 1].events = ZMQ_POLLIN; 
-  }
-
   while (true) {
-
-    zmq::poll(&items[0], items.size(), -1);
-
-    for (int i = 0; i <= view_->nodes_size(); i ++) {
-
-      if (items[i].revents & ZMQ_POLLIN) {
-          
-        zmq::message_t identity;
-        zmq::message_t request;
-        //  Wait for next request from client
-        if (i == 0) {
-          while (receiver_->recv(&identity, ZMQ_DONTWAIT) > 0) {
-
-            receiver_->recv(&request);
-
-            int size_id = identity.size();
-            std::string data_id(static_cast<char*>(identity.data()), size_id);
-            LOG_DEBUG_COM("receiver received from %s", data_id.c_str());
-            deal_msg(request);
-          }
-        }
-        else {
-          while (senders_[i - 1]->recv(&request, ZMQ_DONTWAIT) > 0) {
-            LOG_DEBUG_COM("senders_[%d] received!", i - 1);
-            deal_msg(request);
-          }
-        } 
-
-      }
-    }
+      zmq::message_t identity;
+      zmq::message_t msg;
+      zmq::message_t copied_id;
+      zmq::message_t copied_msg;
+      receiver_->recv(&identity);
+      receiver_->recv(&msg);
+      deal_msg(msg);
+ 
   }
 }
+
+//void Commo::waiting_msg() {
+//
+//  std::vector<zmq::pollitem_t> items(1 + view_->nodes_size());
+//  items[0].socket = (void *)(*receiver_);
+//  items[0].events = ZMQ_POLLIN;
+//
+//  for (int i = 0; i < view_->nodes_size(); i++) {
+//    items[i + 1].socket = (void *)(*senders_[i]);
+//    items[i + 1].events = ZMQ_POLLIN; 
+//  }
+//
+//  while (true) {
+//
+//    zmq::poll(&items[0], items.size(), -1);
+//
+//    for (int i = 0; i <= view_->nodes_size(); i ++) {
+//
+//      if (items[i].revents & ZMQ_POLLIN) {
+//          
+//        zmq::message_t identity;
+//        zmq::message_t request;
+//        //  Wait for next request from client
+//        if (i == 0) {
+//          while (receiver_->recv(&identity, ZMQ_DONTWAIT) > 0) {
+//
+//            receiver_->recv(&request);
+//
+//            int size_id = identity.size();
+//            std::string data_id(static_cast<char*>(identity.data()), size_id);
+//            LOG_DEBUG_COM("receiver received from %s", data_id.c_str());
+//            deal_msg(request);
+//          }
+//        }
+//        else {
+//          while (senders_[i - 1]->recv(&request, ZMQ_DONTWAIT) > 0) {
+//            LOG_DEBUG_COM("senders_[%d] received!", i - 1);
+//            deal_msg(request);
+//          }
+//        } 
+//
+//      }
+//    }
+//  }
+//}
 
 void Commo::client_waiting_msg() {
 

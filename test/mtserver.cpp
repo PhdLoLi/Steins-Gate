@@ -20,7 +20,7 @@ void *worker_routine (void *arg)
         //  Wait for next request from client
         zmq::message_t request;
         socket.recv (&request);
-        std::cout << "Received request: [" << (char*) request.data() << "]" << std::endl;
+//        std::cout << "Received request: [" << (char*) request.data() << "]" << std::endl;
 
         //  Do some 'work'
 //        sleep (1);
@@ -44,7 +44,7 @@ int main ()
     workers.bind ("inproc://workers");
 
     //  Launch pool of worker threads
-    for (int thread_nbr = 0; thread_nbr != 1; thread_nbr++) {
+    for (int thread_nbr = 0; thread_nbr != 2; thread_nbr++) {
         pthread_t worker;
         pthread_create (&worker, NULL, worker_routine, (void *) &context);
     }
