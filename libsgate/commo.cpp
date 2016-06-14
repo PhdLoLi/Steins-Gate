@@ -15,47 +15,38 @@ Commo::Commo(Captain *captain, View &view)
   : captain_(captain), view_(&view), context_(1) {
 
   LOG_INFO_COM("%s Init START", view_->hostname().c_str());
-  for (uint32_t i = 0; i < view_->nodes_size(); i++) {
-    senders_.push_back(new zmq::socket_t(context_, ZMQ_DEALER));
-    senders_address_.push_back("");
-//    senders_state_.push_back(-1);
-
-    std::string identity = std::to_string(view_->whoami());
-    senders_[i]->setsockopt(ZMQ_IDENTITY, identity.c_str(), identity.size());
-
-
-    std::string address = "tcp://" + view_->address(i) + ":" + std::to_string(view_->port(i));
-    LOG_INFO_COM("Connect to address %s, host_name %s", address.c_str(), view_->hostname(i).c_str());
-    senders_address_[i] = address;
-    senders_[i]->connect(address.c_str());
-  }
+// for (uint32_t i = 0; i < view_->nodes_size(); i++) {
+//   senders_.push_back(new zmq::socket_t(context_, ZMQ_DEALER));
+//
+//   std::string identity = std::to_string(view_->whoami());
+//   senders_[i]->setsockopt(ZMQ_IDENTITY, identity.c_str(), identity.size());
+//
+//
+//   std::string address = "tcp://" + view_->address(i) + ":" + std::to_string(view_->port(i));
+//   LOG_INFO_COM("Connect to address %s, host_name %s", address.c_str(), view_->hostname(i).c_str());
+//   senders_[i]->connect(address.c_str());
+// }
   receiver_ = new zmq::socket_t(context_, ZMQ_ROUTER);
   std::string address = "tcp://*:" + std::to_string(view_->port());
   LOG_INFO_COM("My address %s, host_name %s", address.c_str(), view_->hostname().c_str());
   receiver_->bind(address.c_str());
 
-  if (view_->nodes_size() == 1) {
-//    pool_ = new pool(1);
-  }
 //  boost::thread listen(boost::bind(&Commo::waiting_msg, this)); 
 }
 
 Commo::Commo(Client *client, View &view) 
   : client_(client), view_(&view), context_(1) {
 
-  LOG_INFO_COM("%s Init START for Client", view_->hostname().c_str());
+  LOG_INFO_COM("Init START for Client");
 
   for (uint32_t i = 0; i < view_->nodes_size(); i++) {
     senders_.push_back(new zmq::socket_t(context_, ZMQ_DEALER));
-    senders_address_.push_back("");
-//    senders_state_.push_back(-1);
 
     std::string identity = std::to_string(view_->whoami());
     senders_[i]->setsockopt(ZMQ_IDENTITY, identity.c_str(), identity.size());
 
     std::string address = "tcp://" + view_->address(i) + ":" + std::to_string(view_->port(i));
     LOG_INFO_COM("Connect to address %s, host_name %s", address.c_str(), view_->hostname(i).c_str());
-    senders_address_[i] = address;
     senders_[i]->connect(address.c_str());
   }
   boost::thread listen(boost::bind(&Commo::client_waiting_msg, this)); 
