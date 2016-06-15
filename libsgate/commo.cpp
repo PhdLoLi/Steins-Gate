@@ -12,59 +12,101 @@
 namespace sgate {
 
 Commo::Commo(Captain *captain, View &view) 
-  : captain_(captain), view_(&view), context_(1) {
+  : captain_(captain), view_(&view), context_(1), 
+    frontend_(context_, ZMQ_ROUTER), backend_(context_, ZMQ_DEALER) {
 
   LOG_INFO_COM("%s Init START", view_->hostname().c_str());
-// for (uint32_t i = 0; i < view_->nodes_size(); i++) {
-//   senders_.push_back(new zmq::socket_t(context_, ZMQ_DEALER));
-//
-//   std::string identity = std::to_string(view_->whoami());
-//   senders_[i]->setsockopt(ZMQ_IDENTITY, identity.c_str(), identity.size());
-//
-//
-//   std::string address = "tcp://" + view_->address(i) + ":" + std::to_string(view_->port(i));
-//   LOG_INFO_COM("Connect to address %s, host_name %s", address.c_str(), view_->hostname(i).c_str());
-//   senders_[i]->connect(address.c_str());
-// }
-  receiver_ = new zmq::socket_t(context_, ZMQ_ROUTER);
-  std::string address = "tcp://*:" + std::to_string(view_->port());
-  LOG_INFO_COM("My address %s, host_name %s", address.c_str(), view_->hostname().c_str());
-  receiver_->bind(address.c_str());
-
-//  boost::thread listen(boost::bind(&Commo::waiting_msg, this)); 
 }
 
 Commo::Commo(Client *client, View &view) 
-  : client_(client), view_(&view), context_(1) {
+  : client_(client), view_(&view), context_(1),
+    frontend_(context_, ZMQ_ROUTER), backend_(context_, ZMQ_DEALER) {
 
   LOG_INFO_COM("Init START for Client");
-
   for (uint32_t i = 0; i < view_->nodes_size(); i++) {
     senders_.push_back(new zmq::socket_t(context_, ZMQ_DEALER));
-
     std::string identity = std::to_string(view_->whoami());
     senders_[i]->setsockopt(ZMQ_IDENTITY, identity.c_str(), identity.size());
-
     std::string address = "tcp://" + view_->address(i) + ":" + std::to_string(view_->port(i));
     LOG_INFO_COM("Connect to address %s, host_name %s", address.c_str(), view_->hostname(i).c_str());
     senders_[i]->connect(address.c_str());
   }
   boost::thread listen(boost::bind(&Commo::client_waiting_msg, this)); 
 }
+
 Commo::~Commo() {
 }
 
+void Commo::work(zmq::socket_t *worker) {
+  worker->connect("inproc://backend");
+  try {
+    while (true) {
+      zmq::message_t identity;
+      zmq::message_t request;
+      worker->recv(&identity);
+      worker->recv(&request);
+
+      std::string msg_str(static_cast<char*>(request.data()), request.size());
+      int type = int(msg_str.back() - '0');
+      google::protobuf::Message *msg = nullptr;
+      switch(type) {
+        case PREPARE: {
+          msg = new MsgPrepare();
+          break;
+        }
+        case ACCEPT: {
+          msg = new MsgAccept();
+          break;
+        }
+        case DECIDE: {
+          msg = new MsgDecide();
+          break;
+        }
+        case TEACH: {
+          msg = new MsgTeach();
+          break;
+        }
+        case COMMIT: {
+          msg = new MsgCommit();
+          break;
+        }
+        default: 
+          break;
+      }
+      msg_str.pop_back();
+      msg->ParseFromString(msg_str);
+      std::string text_str;
+      google::protobuf::TextFormat::PrintToString(*msg, &text_str);
+      LOG_DEBUG_COM("Receiver Received %s", text_str.c_str());
+      captain_->re_handle_msg(msg, static_cast<MsgType>(type), identity, worker);
+      LOG_DEBUG("Receiver Handle finish!");
+        }
+      }
+      catch (std::exception &e) {}
+}
 void Commo::waiting_msg() {
 
-  while (true) {
-      zmq::message_t identity;
-      zmq::message_t msg;
-      zmq::message_t copied_id;
-      zmq::message_t copied_msg;
-      receiver_->recv(&identity);
-      receiver_->recv(&msg);
-      deal_msg(msg);
- 
+  std::string address = "tcp://*:" + std::to_string(view_->port());
+  LOG_INFO_COM("My address %s, host_name %s", address.c_str(), view_->hostname().c_str());
+
+  frontend_.bind(address.c_str());
+  backend_.bind("inproc://backend");
+  for (int i = 0; i < kMaxThread; ++i) {
+    workers_.push_back(new zmq::socket_t(context_, ZMQ_DEALER));
+    worker_threads.push_back(new boost::thread(boost::bind(&Commo::work, this, workers_[i])));
+    worker_threads[i]->detach();
+  }
+
+  try {
+    std::cout << "HERE!" << std::endl;
+    zmq::proxy((void *)frontend_, (void *)backend_, nullptr);
+  }
+  catch (std::exception &e) {}
+
+  for (int i = 0; i < kMaxThread; ++i) {
+    std::cout << "THERE!" << std::endl;
+    delete workers_[i];
+    delete worker_threads[i];
   }
 }
 
@@ -150,44 +192,19 @@ void Commo::deal_msg(zmq::message_t &request) {
   std::string msg_str(static_cast<char*>(request.data()), request.size());
   int type = int(msg_str.back() - '0');
   google::protobuf::Message *msg = nullptr;
-//    LOG_DEBUG_COM("type %d", type);
   switch(type) {
-    case PREPARE: {
-      msg = new MsgPrepare();
-      break;
-    }
     case PROMISE: {
       msg = new MsgAckPrepare();
-      break;
-    }
-    case ACCEPT: {
-      msg = new MsgAccept();
       break;
     }
     case ACCEPTED: {
       msg = new MsgAckAccept();
       break;
     }
-    case DECIDE: {
-      msg = new MsgDecide();
-      break;
-    }
     case LEARN: {
       msg = new MsgLearn();
       break;
     }                        
-    case TEACH: {
-      msg = new MsgTeach();
-      break;
-    }
-    case COMMIT: {
-      msg = new MsgCommit();
-      break;
-    }
-    case COMMAND: {
-      msg = new MsgCommand();
-      break;
-    }
     default: 
       break;
   }
@@ -200,23 +217,21 @@ void Commo::deal_msg(zmq::message_t &request) {
   LOG_DEBUG("Handle finish!");
 }
 
+
+// PREPARE ACCEPT DECIDE now only ACCEPT
 void Commo::broadcast_msg(google::protobuf::Message *msg, MsgType msg_type) {
 
   if (view_->nodes_size() == 1) {
-  //  pool_->schedule(boost::bind(&Captain::handle_msg, captain_, msg, msg_type));
-    if (msg_type != DECIDE) 
-      captain_->handle_msg(msg, msg_type);
+//    if (msg_type != DECIDE) 
+    captain_->re_handle_msg(msg, msg_type);
     return;
   }
-
   for (uint32_t i = 0; i < view_->nodes_size(); i++) {
-    
     if (i == view_->whoami()) {
-      if (msg_type != DECIDE)
-        captain_->handle_msg(msg, msg_type);
+ //     if (msg_type != DECIDE)
+      captain_->re_handle_msg(msg, msg_type);
       continue;
     }
-
     std::string msg_str;
     msg->SerializeToString(&msg_str);
     msg_str.append(std::to_string(msg_type));
@@ -230,6 +245,7 @@ void Commo::broadcast_msg(google::protobuf::Message *msg, MsgType msg_type) {
 
 }
 
+// COMMIT & TEACH
 void Commo::send_one_msg(google::protobuf::Message *msg, MsgType msg_type, node_id_t node_id) {
 //  std::cout << " --- Commo Send ONE to captain " << node_id << " MsgType: " << msg_type << std::endl;
   LOG_DEBUG_COM("Send ONE to --%s (msg_type):%d", view_->hostname(node_id).c_str(), msg_type);
@@ -241,19 +257,47 @@ void Commo::send_one_msg(google::protobuf::Message *msg, MsgType msg_type, node_
   zmq::message_t request(msg_str.size());
   memcpy((void *)request.data(), msg_str.c_str(), msg_str.size());
 
-  if ((msg_type == TEACH) || (msg_type == COMMIT)) {
-    LOG_DEBUG_COM("senders[%d] send request", node_id);
-    senders_[node_id]->send(request, ZMQ_DONTWAIT);
-    LOG_DEBUG_COM("senders[%d] send finish", node_id);
-  }
-  else { 
-    std::string data_id = std::to_string(node_id);
-    zmq::message_t identity(data_id.size());
-    memcpy((void *)identity.data(), data_id.c_str(), data_id.size());
-    LOG_DEBUG_COM("receiver_ reply request to %s", view_->hostname(node_id).c_str());
-    receiver_->send(identity, ZMQ_SNDMORE);
-    receiver_->send(request, ZMQ_DONTWAIT);
-    LOG_DEBUG_COM("receiver_ reply request to %s finish", view_->hostname(node_id).c_str());
-  }
+  LOG_DEBUG_COM("senders[%d] send request", node_id);
+  senders_[node_id]->send(request, ZMQ_DONTWAIT);
+  LOG_DEBUG_COM("senders[%d] send finish", node_id);
+}
+
+// PROMISE ACCEPTED LEARN for acc, COMMITTED READ for master 
+void Commo::reply_msg(google::protobuf::Message *msg, MsgType msg_type, zmq::message_t &identity, zmq::socket_t *worker) {
+//  std::cout << " --- Commo Send ONE to captain " << node_id << " MsgType: " << msg_type << std::endl;
+  LOG_DEBUG_COM("Reply to --%s (msg_type):%d", view_->hostname(node_id).c_str(), msg_type);
+
+  std::string msg_str;
+  msg->SerializeToString(&msg_str);
+  msg_str.append(std::to_string(msg_type));
+  zmq::message_t request(msg_str.size());
+  memcpy((void *)request.data(), msg_str.c_str(), msg_str.size());
+
+  zmq::message_t copied_id;
+  copied_id.copy(&identity);
+
+  LOG_DEBUG_COM("receiver_ reply request to %s", view_->hostname(node_id).c_str());
+  worker->send(copied_id, ZMQ_SNDMORE);
+  worker->send(request, ZMQ_DONTWAIT);
+  LOG_DEBUG_COM("receiver_ reply request to %s finish", view_->hostname(node_id).c_str());
+}
+// COMMITTED WRITE for master 
+void Commo::reply_client(google::protobuf::Message *msg, MsgType msg_type, node_id_t node_id) {
+//  std::cout << " --- Commo Send ONE to captain " << node_id << " MsgType: " << msg_type << std::endl;
+  LOG_DEBUG_COM("Reply to --%s (msg_type):%d", view_->hostname(node_id).c_str(), msg_type);
+
+  std::string msg_str;
+  msg->SerializeToString(&msg_str);
+  msg_str.append(std::to_string(msg_type));
+  zmq::message_t request(msg_str.size());
+  memcpy((void *)request.data(), msg_str.c_str(), msg_str.size());
+
+  std::string data_id = std::to_string(node_id);
+  zmq::message_t identity(data_id.size());
+  memcpy((void *)identity.data(), data_id.c_str(), data_id.size());
+
+  LOG_DEBUG_COM("receiver_ reply request to %d", node_id);
+  workers_[node_id % kMaxThread]->send(identity, ZMQ_SNDMORE);
+  workers_[node_id % kMaxThread]->send(request, ZMQ_DONTWAIT);
 }
 } // namespace sgate

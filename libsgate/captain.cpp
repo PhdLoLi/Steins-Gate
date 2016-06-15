@@ -38,13 +38,6 @@ void Captain::set_callback(callback_latency_t& cb) {
   callback_latency_ = cb;
 }
 
-/** 
- * return node_id
- */
-//node_id_t Captain::get_node_id() {
-//  return view_->whoami();
-//}
-
 /**
  * set commo_handler 
  */
@@ -107,7 +100,7 @@ void Captain::commit(PropValue* prop_value) {
 }
 
 /**
- * handle message from commo, all kinds of message
+ * handle message from commo, message TYPE PROMISE ACCEPTED LEARN 
  */
 void Captain::handle_msg(google::protobuf::Message *msg, MsgType msg_type) {
 
@@ -115,36 +108,9 @@ void Captain::handle_msg(google::protobuf::Message *msg, MsgType msg_type) {
 
   switch (msg_type) {
 
-    case PREPARE: {
-      // acceptor should handle prepare message
-      MsgPrepare *msg_pre = (MsgPrepare *)msg;
-
-      slot_id_t acc_slot = msg_pre->msg_header().slot_id();
-      LOG_TRACE_CAP("(msg_type):PREPARE, (slot_id): %llu", acc_slot);
-      // IMPORTANT!!! if there is no such acceptor then init
-
-      acceptors_mutex_.lock();
-      for (int i = acceptors_.size(); i <= acc_slot; i++) {
-        LOG_TRACE_CAP("(msg_type):PREPARE, New Acceptor");
-        acceptors_.emplace_back(new Acceptor(*view_));
-      }
-
-      MsgAckPrepare * msg_ack_pre = acceptors_[acc_slot]->handle_msg_prepare(msg_pre);
-      acceptors_mutex_.unlock();
-
-      if (msg_pre->msg_header().node_id() == view_->whoami())
-        handle_msg(msg_ack_pre, PROMISE);
-      else // receiver should reply to PROMISE
-        commo_->send_one_msg(msg_ack_pre, PROMISE, msg_pre->msg_header().node_id());
-
-      break;
-    }
-
     case PROMISE: {
       // proposer should handle ack of prepare message
-
       MsgAckPrepare *msg_ack_pre = (MsgAckPrepare *)msg;
-
       slot_id_t slot_id = msg_ack_pre->msg_header().slot_id();
       // if we don't have such proposer ,return
       proposers_mutex_.lock();
@@ -175,27 +141,22 @@ void Captain::handle_msg(google::protobuf::Message *msg, MsgType msg_type) {
         case CONTINUE: {
           // Send to all acceptors in view
           LOG_TRACE_CAP("(msg_type):PROMISE, Continue to Phase II");
-
           MsgAccept *msg_acc = proposers_[slot_id]->curr_proposer->msg_accept();
-
           msg_acc->mutable_msg_header()->set_slot_id(slot_id);
           // IMPORTANT set status
           proposers_[slot_id]->proposer_status = PHASEII;
-
           proposers_mutex_.unlock();
 
           commo_->broadcast_msg(msg_acc, ACCEPT);
-
           break;
         }
         case RESTART: {  //RESTART
           LOG_TRACE_CAP("(msg_type):PROMISE, RESTART");
           MsgPrepare *msg_pre = proposers_[slot_id]->curr_proposer->restart_msg_prepare();
-
           msg_pre->mutable_msg_header()->set_slot_id(slot_id);
           proposers_[slot_id]->proposer_status = INIT;
           proposers_mutex_.unlock();
-
+          
           commo_->broadcast_msg(msg_pre, PREPARE);
           break;
         }
@@ -206,6 +167,188 @@ void Captain::handle_msg(google::protobuf::Message *msg, MsgType msg_type) {
       break;
     }
                 
+    case ACCEPTED: {
+      // proposer should handle ack of accept message
+      MsgAckAccept *msg_ack_acc = (MsgAckAccept *)msg; 
+      slot_id_t slot_id = msg_ack_acc->msg_header().slot_id();
+      // if we don't have such proposer ,return
+      proposers_mutex_.lock();
+
+      if (proposers_.find(slot_id) == proposers_.end()) {
+        LOG_TRACE_CAP("(msg_type):ACCEPTED,proposers don't have this (slot_id):%llu Return!", slot_id);
+        proposers_mutex_.unlock();
+        return;
+      }
+
+      if (proposers_[slot_id]->proposer_status != PHASEII) {
+        LOG_TRACE_CAP("(msg_type):ACCEPTED, (proposer_status_):%d NOT in PhaseII Return!", proposers_[slot_id]->proposer_status);
+        proposers_mutex_.unlock();
+        return;
+      }
+
+      AckType type = proposers_[slot_id]->curr_proposer->handle_msg_accepted(msg_ack_acc);
+      switch (type) {
+        case DROP: {
+          proposers_mutex_.unlock();
+          break;
+        }
+        case NOT_ENOUGH: {
+          proposers_mutex_.unlock();
+          break;
+        }               
+        case CHOOSE: {
+          // First add the chosen_value into chosen_values_ 
+          PropValue *chosen_value = proposers_[slot_id]->curr_proposer->get_chosen_value();
+          PropValue *init_value = proposers_[slot_id]->curr_proposer->get_init_value();
+          int try_time = proposers_[slot_id]->try_time;
+          proposers_[slot_id]->proposer_status = CHOSEN;
+
+          LOG_DEBUG_CAP("%sNodeID:%u Successfully Choose (value):%s ! (slot_id):%llu %s", 
+                        BAK_MAG, view_->whoami(), chosen_value->data().c_str(), slot_id, NRM);
+
+          proposers_mutex_.unlock();
+
+          if (chosen_value->id() == init_value->id()) {
+            slot_id_t id = chosen_value->id();
+            node_id_t client_id = node_id_t(id >> 32);
+            slot_id_t counter = uint32_t(chosen_value->id());
+            MsgAckCommit *msg_ack_com = msg_committed(counter);
+  
+            LOG_DEBUG_CAP("%s(msg_type):Reply_COMMIT from client_(node_id):%u --NodeID %u handle", 
+                        UND_YEL, client_id, view_->whoami());
+
+            commo_->reply_client(msg_ack_com, COMMITTED, client_id);
+
+            if (callback_latency_) {
+              callback_latency_(slot_id, *chosen_value, try_time);
+            }
+          }
+
+          // important change max_chosen & max_chosen
+          add_chosen_value(slot_id, chosen_value);
+          LOG_DEBUG_CAP("(max_chosen_):%llu (max_chosen_without_hole_):%llu (chosen_values.size()):%lu", 
+                        max_chosen_, max_chosen_without_hole_, chosen_values_.size());
+          LOG_DEBUG_CAP("(msg_type):ACCEPTED, Broadcast this chosen_value");
+
+          proposers_mutex_.lock();
+          proposers_.erase(slot_id);
+
+          if (chosen_value->id() == init_value->id()) {
+            if (tocommit_values_.empty()) {
+              LOG_DEBUG_CAP("This proposer END MISSION Temp Node_ID:%u max_chosen_without_hole_:%llu", view_->whoami(), max_chosen_without_hole_);
+              proposers_mutex_.unlock();
+            } else {
+              PropValue *prop_value = tocommit_values_.front();
+              tocommit_values_.pop();            
+  
+              proposer_info_t *prop_info = new proposer_info_t(1);
+              prop_info->curr_proposer = new Proposer(*view_, *prop_value); 
+            
+              max_slot_++;
+  
+              proposers_[max_slot_] = prop_info;
+              proposers_[max_slot_]->curr_proposer->gen_next_ballot();
+              proposers_[max_slot_]->curr_proposer->init_curr_value();
+              MsgAccept *msg_acc = proposers_[max_slot_]->curr_proposer->msg_accept();
+              msg_acc->mutable_msg_header()->set_slot_id(max_slot_);
+              proposers_[max_slot_]->proposer_status = PHASEII;
+  
+              proposers_mutex_.unlock(); 
+              LOG_TRACE_CAP("after finish one, commit from queue, broadcast it");
+              max_chosen_mutex_.lock();
+              if (max_chosen_ > last_slot_ && chosen_values_[last_slot_ + 1]) {
+                last_slot_++;
+                msg_acc->set_last_slot(last_slot_);
+                value_id_t last_value = chosen_values_[last_slot_]->id();
+                msg_acc->set_last_value(last_value);
+              }
+              max_chosen_mutex_.unlock();
+              commo_->broadcast_msg(msg_acc, ACCEPT);  
+            }
+          } else {
+            // recommit the same value need to change
+            try_time++;
+            proposer_info_t *prop_info = new proposer_info_t(try_time);
+            prop_info->curr_proposer = new Proposer(*view_, *init_value);           
+            max_slot_++;
+            proposers_[max_slot_] = prop_info;
+            MsgPrepare *msg_pre = proposers_[max_slot_]->curr_proposer->msg_prepare();
+            proposers_[max_slot_]->proposer_status = INIT;
+            msg_pre->mutable_msg_header()->set_slot_id(max_slot_);
+
+            proposers_mutex_.unlock();
+
+            LOG_INFO_CAP("Recommit the same (value):%s try_time :%d!!!", init_value->data().c_str(), try_time);
+            commo_->broadcast_msg(msg_pre, PREPARE);            
+          }
+          break;
+        }
+
+        default: { //RESTART
+          LOG_DEBUG_CAP("--NodeID:%u (msg_type):ACCEPTED, %sRESTART!%s", view_->whoami(), TXT_RED, NRM); 
+          MsgPrepare *msg_pre = proposers_[slot_id]->curr_proposer->restart_msg_prepare();
+          msg_pre->mutable_msg_header()->set_slot_id(slot_id);
+          proposers_[slot_id]->proposer_status = INIT;
+          proposers_mutex_.unlock();
+          commo_->broadcast_msg(msg_pre, PREPARE);         
+        }
+      }
+      break;
+    }
+
+    case LEARN: {
+      // captain should handle this message
+      MsgLearn *msg_lea = (MsgLearn *)msg;
+      slot_id_t lea_slot = msg_lea->msg_header().slot_id();
+      LOG_DEBUG_CAP("%s(msg_type):LEARN (slot_id):%llu from (node_id):%u --NodeID %u handle", 
+                    UND_GRN, lea_slot, msg_lea->msg_header().node_id(), view_->whoami());
+      if (lea_slot > max_chosen_ || chosen_values_[lea_slot] == NULL) {
+        return;
+      }
+      MsgTeach *msg_tea = msg_teach(lea_slot);
+      commo_->send_one_msg(msg_tea, TEACH, msg_lea->msg_header().node_id());
+      break;
+    }
+
+    default: 
+      break;
+  }
+}
+
+/**
+ * handle message from commo, Message Type PREPARE ACCECPT DECIDE from proposer, COMMIT from client
+ */
+void Captain::re_handle_msg(google::protobuf::Message *msg, MsgType msg_type, zmq::message_t &identity, zmq::socket_t *worker) {
+
+  LOG_TRACE_CAP("<handle_msg> with worker Start (msg_type):%d", msg_type);
+
+  switch (msg_type) {
+
+    case PREPARE: {
+      // acceptor should handle prepare message
+      MsgPrepare *msg_pre = (MsgPrepare *)msg;
+
+      slot_id_t acc_slot = msg_pre->msg_header().slot_id();
+      LOG_TRACE_CAP("(msg_type):PREPARE, (slot_id): %llu", acc_slot);
+      // IMPORTANT!!! if there is no such acceptor then init
+
+      acceptors_mutex_.lock();
+      for (int i = acceptors_.size(); i <= acc_slot; i++) {
+        LOG_TRACE_CAP("(msg_type):PREPARE, New Acceptor");
+        acceptors_.emplace_back(new Acceptor(*view_));
+      }
+
+      MsgAckPrepare * msg_ack_pre = acceptors_[acc_slot]->handle_msg_prepare(msg_pre);
+      acceptors_mutex_.unlock();
+
+      if (msg_pre->msg_header().node_id() == view_->whoami())
+        handle_msg(msg_ack_pre, PROMISE);
+      else // receiver should reply to PROMISE
+        commo_->reply_msg(msg_ack_pre, PROMISE, identity, worker);
+
+      break;
+    }
+                  
     case ACCEPT: {
       // acceptor should handle accept message
       MsgAccept *msg_acc = (MsgAccept *)msg;
@@ -241,173 +384,11 @@ void Captain::handle_msg(google::protobuf::Message *msg, MsgType msg_type) {
             add_learn_value(dec_slot, acceptors_[dec_slot]->get_max_value(), msg_acc->msg_header().node_id()); 
           } 
         }
-        commo_->send_one_msg(msg_ack_acc, ACCEPTED, msg_acc->msg_header().node_id());
+        commo_->reply_msg(msg_ack_acc, ACCEPTED, identity, worker);
       }
 
       break;
     } 
-
-    case ACCEPTED: {
-      // proposer should handle ack of accept message
-
-      MsgAckAccept *msg_ack_acc = (MsgAckAccept *)msg; 
-
-      slot_id_t slot_id = msg_ack_acc->msg_header().slot_id();
-      // if we don't have such proposer ,return
-
-      proposers_mutex_.lock();
-
-      if (proposers_.find(slot_id) == proposers_.end()) {
-        LOG_TRACE_CAP("(msg_type):ACCEPTED,proposers don't have this (slot_id):%llu Return!", slot_id);
-        proposers_mutex_.unlock();
-        return;
-      }
-
-      // handle_msg_accepted
-
-      if (proposers_[slot_id]->proposer_status != PHASEII) {
-        LOG_TRACE_CAP("(msg_type):ACCEPTED, (proposer_status_):%d NOT in PhaseII Return!", proposers_[slot_id]->proposer_status);
-        proposers_mutex_.unlock();
-        return;
-      }
-
-      AckType type = proposers_[slot_id]->curr_proposer->handle_msg_accepted(msg_ack_acc);
-
-      switch (type) {
-        case DROP: {
-          proposers_mutex_.unlock();
-          break;
-        }
-
-        case NOT_ENOUGH: {
-          proposers_mutex_.unlock();
-          break;
-        }        
-        
-        case CHOOSE: {
-
-          // First add the chosen_value into chosen_values_ 
-          PropValue *chosen_value = proposers_[slot_id]->curr_proposer->get_chosen_value();
-          PropValue *init_value = proposers_[slot_id]->curr_proposer->get_init_value();
-          int try_time = proposers_[slot_id]->try_time;
-          proposers_[slot_id]->proposer_status = CHOSEN;
-
-
-          LOG_DEBUG_CAP("%sNodeID:%u Successfully Choose (value):%s ! (slot_id):%llu %s", 
-                        BAK_MAG, view_->whoami(), chosen_value->data().c_str(), slot_id, NRM);
-
-          proposers_mutex_.unlock();
-
-          if (chosen_value->id() == init_value->id()) {
-            slot_id_t id = chosen_value->id();
-            node_id_t client_id = node_id_t(id >> 32);
-            slot_id_t counter = uint32_t(chosen_value->id());
-            MsgAckCommit *msg_ack_com = msg_committed(counter);
-  
-            LOG_DEBUG_CAP("%s(msg_type):Reply_COMMIT from client_(node_id):%u --NodeID %u handle", 
-                        UND_YEL, client_id, view_->whoami());
-            commo_->send_one_msg(msg_ack_com, COMMITTED, client_id);
-            if (callback_latency_) {
-              callback_latency_(slot_id, *chosen_value, try_time);
-            }
-          }
-          
-
-
-          // important change max_chosen & max_chosen
-          add_chosen_value(slot_id, chosen_value);
-
-          LOG_DEBUG_CAP("(max_chosen_):%llu (max_chosen_without_hole_):%llu (chosen_values.size()):%lu", 
-                        max_chosen_, max_chosen_without_hole_, chosen_values_.size());
-          LOG_DEBUG_CAP("(msg_type):ACCEPTED, Broadcast this chosen_value");
-
-          proposers_mutex_.lock();
-          proposers_.erase(slot_id);
-
-          if (chosen_value->id() == init_value->id()) {
-
-            // start committing a new value from queue
-//            tocommit_values_mutex_.lock();
-            
-            if (tocommit_values_.empty()) {
-              LOG_DEBUG_CAP("This proposer END MISSION Temp Node_ID:%u max_chosen_without_hole_:%llu", view_->whoami(), max_chosen_without_hole_);
-//              tocommit_values_mutex_.unlock();
-              proposers_mutex_.unlock();
-
-            } else {
-
-              PropValue *prop_value = tocommit_values_.front();
-              tocommit_values_.pop();            
-//              tocommit_values_mutex_.unlock();
-  
-              proposer_info_t *prop_info = new proposer_info_t(1);
-              prop_info->curr_proposer = new Proposer(*view_, *prop_value); 
-            
-              max_slot_++;
-  
-              proposers_[max_slot_] = prop_info;
-              proposers_[max_slot_]->curr_proposer->gen_next_ballot();
-              proposers_[max_slot_]->curr_proposer->init_curr_value();
-              MsgAccept *msg_acc = proposers_[max_slot_]->curr_proposer->msg_accept();
-              msg_acc->mutable_msg_header()->set_slot_id(max_slot_);
-              proposers_[max_slot_]->proposer_status = PHASEII;
-  
-              proposers_mutex_.unlock();
-  
-              LOG_TRACE_CAP("after finish one, commit from queue, broadcast it");
-
-              max_chosen_mutex_.lock();
-              if (max_chosen_ > last_slot_ && chosen_values_[last_slot_ + 1]) {
-                last_slot_++;
-                msg_acc->set_last_slot(last_slot_);
-                value_id_t last_value = chosen_values_[last_slot_]->id();
-                msg_acc->set_last_value(last_value);
-              }
-              max_chosen_mutex_.unlock();
-
-              commo_->broadcast_msg(msg_acc, ACCEPT);
-  
-            }
-
-          } else {
-            // recommit the same value need to change
-
-            try_time++;
-
-            proposer_info_t *prop_info = new proposer_info_t(try_time);
-            prop_info->curr_proposer = new Proposer(*view_, *init_value); 
-          
-            max_slot_++;
-
-            proposers_[max_slot_] = prop_info;
-            MsgPrepare *msg_pre = proposers_[max_slot_]->curr_proposer->msg_prepare();
-            proposers_[max_slot_]->proposer_status = INIT;
-            msg_pre->mutable_msg_header()->set_slot_id(max_slot_);
-
-            proposers_mutex_.unlock();
-
-            LOG_INFO_CAP("Recommit the same (value):%s try_time :%d!!!", init_value->data().c_str(), try_time);
-            commo_->broadcast_msg(msg_pre, PREPARE);
-            
-          }
-
-          break;
-        }
-
-        default: { //RESTART
-          LOG_DEBUG_CAP("--NodeID:%u (msg_type):ACCEPTED, %sRESTART!%s", view_->whoami(), TXT_RED, NRM); 
-          MsgPrepare *msg_pre = proposers_[slot_id]->curr_proposer->restart_msg_prepare();
-
-          msg_pre->mutable_msg_header()->set_slot_id(slot_id);
-          proposers_[slot_id]->proposer_status = INIT;
-          proposers_mutex_.unlock();
-
-          commo_->broadcast_msg(msg_pre, PREPARE);
-         
-        }
-      }
-      break;
-    }
 
     case DECIDE: {
       // captain should handle this message
@@ -428,25 +409,8 @@ void Captain::handle_msg(google::protobuf::Message *msg, MsgType msg_type) {
       } else {
         // acceptors_[dec_slot] doesn't contain such value, need learn from this sender
         MsgLearn *msg_lea = msg_learn(dec_slot);
-        commo_->send_one_msg(msg_lea, LEARN, msg_dec->msg_header().node_id());
+        commo_->reply_msg(msg_lea, LEARN, identity, worker);
       } 
-      break;
-    }
-
-    case LEARN: {
-      // captain should handle this message
-      MsgLearn *msg_lea = (MsgLearn *)msg;
-      slot_id_t lea_slot = msg_lea->msg_header().slot_id();
-
-      LOG_DEBUG_CAP("%s(msg_type):LEARN (slot_id):%llu from (node_id):%u --NodeID %u handle", 
-                    UND_GRN, lea_slot, msg_lea->msg_header().node_id(), view_->whoami());
-
-      if (lea_slot > max_chosen_ || chosen_values_[lea_slot] == NULL) {
-        return;
-      }
-
-      MsgTeach *msg_tea = msg_teach(lea_slot);
-      commo_->send_one_msg(msg_tea, TEACH, msg_lea->msg_header().node_id());
       break;
     }
 
@@ -454,16 +418,13 @@ void Captain::handle_msg(google::protobuf::Message *msg, MsgType msg_type) {
       // captain should handle this message
       MsgTeach *msg_tea = (MsgTeach *)msg;
       slot_id_t tea_slot = msg_tea->msg_header().slot_id();
-
       if (max_chosen_ >= tea_slot && chosen_values_[tea_slot]) {
         return;
       }
-
       LOG_DEBUG_CAP("%s(msg_type):TEACH (slot_id):%llu from (node_id):%u --NodeID %u handle", 
                     UND_YEL, tea_slot, msg_tea->msg_header().node_id(), view_->whoami());
       // only when has value
       add_learn_value(tea_slot, msg_tea->mutable_prop_value(), msg_tea->msg_header().node_id());
-
       break;
     }
 
@@ -482,7 +443,7 @@ void Captain::handle_msg(google::protobuf::Message *msg, MsgType msg_type) {
         MsgAckCommit *msg_ack_com = msg_committed(counter);
         LOG_DEBUG_CAP("%s(msg_type):Reply_COMMIT from client_(node_id):%u --NodeID %u handle", 
                     UND_YEL, client_id, view_->whoami());
-        commo_->send_one_msg(msg_ack_com, COMMITTED, client_id);
+        commo_->reply_msg(msg_ack_com, COMMITTED, identity, worker);
         
         return;
       }
@@ -519,16 +480,12 @@ void Captain::handle_msg(google::protobuf::Message *msg, MsgType msg_type) {
         
         LOG_DEBUG_CAP("%s(msg_type):Reply_COMMIT from client_(node_id):%u --NodeID %u handle", 
                     UND_YEL, client_id, view_->whoami());
-        commo_->send_one_msg(msg_ack_com, COMMITTED, client_id);
+        commo_->reply_msg(msg_ack_com, COMMITTED, identity, worker);
+
       }
       break;
     }
 
-    case COMMAND: {
-      // captain should handle this message
-      // not using this!!!!!
-      break;
-    }
     default: 
       break;
   }
@@ -576,17 +533,6 @@ MsgTeach *Captain::msg_teach(slot_id_t slot_id) {
   msg_tea->set_allocated_msg_header(msg_header);
   msg_tea->set_allocated_prop_value(chosen_values_[slot_id]);
   return msg_tea; 
-}
-
-/**
- * Return Command Message
- */
-MsgCommand *Captain::msg_command() {
-  MsgHeader *msg_header = set_msg_header(MsgType::COMMAND, 0);
-  MsgCommand *msg_cmd = new MsgCommand();
-  msg_cmd->set_allocated_msg_header(msg_header);
-  msg_cmd->set_cmd_type(SET_MASTER);
-  return msg_cmd; 
 }
 
 /**
@@ -730,7 +676,7 @@ void Captain::add_callback() {
 //
 //    LOG_DEBUG_CAP("%s(msg_type):Reply_COMMIT from client_(node_id):%u --NodeID %u handle", 
 //                UND_YEL, client_id, view_->whoami());
-//    commo_->send_one_msg(msg_ack_com, COMMITTED, client_id);
+//    commo_->reply_client(msg_ack_com, COMMITTED, client_id);
 
     if (callback_full_) {
       node_id_t node_id = node_id_t(prop_value->id()); 

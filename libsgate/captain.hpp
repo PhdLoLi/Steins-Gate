@@ -13,6 +13,7 @@
 #include "threadpool.hpp" 
 //#include "ThreadPool.h"
 #include <map>
+#include <zmq.hpp>
 //#include "include_all.h"
 using namespace boost::threadpool;
 namespace sgate {
@@ -30,6 +31,8 @@ struct proposer_info_t {
   };
 };
 
+static zmq::message_t dumID_;
+static zmq::socket_t *dumSoc_;
 
 class Commo;
 class Captain {
@@ -57,11 +60,6 @@ class Captain {
    */
   void commit(PropValue *);
 
-  /** 
-   * return node_id
-   */
-//  node_id_t get_node_id(); 
-
   /**
    * set commo_handler 
    */
@@ -71,6 +69,11 @@ class Captain {
    * handle message from commo, all kinds of message
    */
   void handle_msg(google::protobuf::Message *, MsgType);
+
+  /**
+   * handle message from commo, all kinds of message
+   */
+  void re_handle_msg(google::protobuf::Message *, MsgType, zmq::message_t &id = dumID_, zmq::socket_t *socket = dumSoc_);
 
   /**
    * Add a new chosen_value 

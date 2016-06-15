@@ -10,7 +10,6 @@ enum MsgType {
   TEACH = 6;
   COMMIT = 7;
   COMMITTED = 8;
-  COMMAND = 9;
 }
 
 enum CmdType {
