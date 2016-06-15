@@ -98,13 +98,11 @@ void Commo::waiting_msg() {
   }
 
   try {
-    std::cout << "HERE!" << std::endl;
     zmq::proxy((void *)frontend_, (void *)backend_, nullptr);
   }
   catch (std::exception &e) {}
 
   for (int i = 0; i < kMaxThread; ++i) {
-    std::cout << "THERE!" << std::endl;
     delete workers_[i];
     delete worker_threads[i];
   }
