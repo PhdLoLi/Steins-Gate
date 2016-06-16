@@ -12,23 +12,24 @@
 namespace sgate {
 
 Commo::Commo(Captain *captain, View &view) 
-  : captain_(captain), view_(&view), context_(1), 
+  : captain_(captain), view_(&view), context_(1), ctx_(1), 
     frontend_(context_, ZMQ_ROUTER), backend_(context_, ZMQ_DEALER) {
   LOG_INFO_COM("%s Init START", view_->hostname().c_str());
   if (view_->if_master()) {
   for (uint32_t i = 0; i < view_->nodes_size(); i++) {
-    ctxes_.push_back(zmq::context_t(1));
-    senders_.push_back(new zmq::socket_t(context_, ZMQ_DEALER));
+//    ctxes_.push_back(zmq::context_t(1));
+    senders_.push_back(new zmq::socket_t(ctx_, ZMQ_DEALER));
     if (i != view_->whoami()) {
       std::string identity = std::to_string(view_->whoami());
       senders_[i]->setsockopt(ZMQ_IDENTITY, identity.c_str(), identity.size());
       std::string address = "tcp://" + view_->address(i) + ":" + std::to_string(view_->port(i));
       LOG_INFO_COM("Connect to address %s, host_name %s", address.c_str(), view_->hostname(i).c_str());
       senders_[i]->connect(address.c_str());
-      sender_threads.push_back(new boost::thread(boost::bind(&Commo::waiting, this, senders_[i])));
+//      sender_threads.push_back(new boost::thread(boost::bind(&Commo::waiting, this, senders_[i])));
 //      sender_threads[i]->detach();
     }
   }
+  boost::thread listen(boost::bind(&Commo::waiting, this)); 
   }
 }
 
@@ -121,18 +122,26 @@ void Commo::waiting_msg() {
   }
 }
 
-void Commo::waiting(zmq::socket_t *sender) {
+void Commo::waiting() {
 
-  std::vector<zmq::pollitem_t> items(1);
-  items[0].socket = (void *)(*sender);
-  items[0].events = ZMQ_POLLIN;
+  std::vector<zmq::pollitem_t> items(view_->nodes_size());
+
+  for (int i = 0; i < view_->nodes_size(); i++) {
+    items[i].socket = (void *)(*senders_[i]);
+    items[i].events = ZMQ_POLLIN; 
+  }
 
   while (true) {
-    zmq::poll(&items[0], 1, -1);
-    if (items[0].revents & ZMQ_POLLIN) {
-      zmq::message_t request;
-      while (sender->recv(&request, ZMQ_DONTWAIT) > 0) {
-        deal_msg(request);
+
+    zmq::poll(&items[0], items.size(), -1);
+
+    for (int i = 0; i < view_->nodes_size(); i ++) {
+      if (items[i].revents & ZMQ_POLLIN) {
+        zmq::message_t request;
+        while (senders_[i]->recv(&request, ZMQ_DONTWAIT) > 0) {
+          LOG_DEBUG_COM("senders_[%d] received!", i);
+          deal_msg(request);
+        }
       }
     }
   }

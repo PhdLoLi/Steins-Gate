@@ -39,18 +39,19 @@ class Commo {
 
  private:
   void work(zmq::socket_t *worker);
-  void waiting(zmq::socket_t *sender);
+  void waiting();
   std::vector<Captain *> captains_;
   Captain *captain_;
   Client *client_;
   View *view_;
 //  pool *pool_;
   zmq::context_t context_;
+  zmq::context_t ctx_;
 //  zmq::socket_t *receiver_;
 //  zmq::socket_t sender_;
   std::vector<zmq::socket_t *> senders_;
-  std::vector<zmq::context_t> ctxes_;
-  std::vector<boost::thread *> sender_threads;
+//  std::vector<zmq::context_t> ctxes_;
+//  std::vector<boost::thread *> sender_threads;
 
   std::vector<zmq::socket_t *> workers_;
   std::vector<boost::thread *> worker_threads;
