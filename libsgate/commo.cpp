@@ -25,7 +25,7 @@ Commo::Commo(Captain *captain, View &view)
       LOG_INFO_COM("Connect to address %s, host_name %s", address.c_str(), view_->hostname(i).c_str());
       senders_[i]->connect(address.c_str());
       sender_threads.push_back(new boost::thread(boost::bind(&Commo::waiting, this, senders_[i])));
-      sender_threads[i]->detach();
+//      sender_threads[i]->detach();
     }
   }
 }
