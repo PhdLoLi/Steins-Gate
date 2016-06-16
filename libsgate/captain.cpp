@@ -318,7 +318,7 @@ void Captain::handle_msg(google::protobuf::Message *msg, MsgType msg_type) {
 /**
  * handle message from commo, Message Type PREPARE ACCECPT DECIDE from proposer, COMMIT from client
  */
-void Captain::re_handle_msg(google::protobuf::Message *msg, MsgType msg_type, zmq::message_t &identity, zmq::socket_t *worker) {
+void Captain::re_handle_msg(google::protobuf::Message *msg, MsgType msg_type, zmq::message_t &identity) {
 
   LOG_TRACE_CAP("<handle_msg> with worker Start (msg_type):%d", msg_type);
 
@@ -344,7 +344,7 @@ void Captain::re_handle_msg(google::protobuf::Message *msg, MsgType msg_type, zm
       if (msg_pre->msg_header().node_id() == view_->whoami())
         handle_msg(msg_ack_pre, PROMISE);
       else // receiver should reply to PROMISE
-        commo_->reply_msg(msg_ack_pre, PROMISE, identity, worker);
+        commo_->reply_msg(msg_ack_pre, PROMISE, identity);
 
       break;
     }
@@ -384,7 +384,7 @@ void Captain::re_handle_msg(google::protobuf::Message *msg, MsgType msg_type, zm
             add_learn_value(dec_slot, acceptors_[dec_slot]->get_max_value(), msg_acc->msg_header().node_id()); 
           } 
         }
-        commo_->reply_msg(msg_ack_acc, ACCEPTED, identity, worker);
+        commo_->reply_msg(msg_ack_acc, ACCEPTED, identity);
       }
 
       break;
@@ -409,7 +409,7 @@ void Captain::re_handle_msg(google::protobuf::Message *msg, MsgType msg_type, zm
       } else {
         // acceptors_[dec_slot] doesn't contain such value, need learn from this sender
         MsgLearn *msg_lea = msg_learn(dec_slot);
-        commo_->reply_msg(msg_lea, LEARN, identity, worker);
+        commo_->reply_msg(msg_lea, LEARN, identity);
       } 
       break;
     }
@@ -443,7 +443,7 @@ void Captain::re_handle_msg(google::protobuf::Message *msg, MsgType msg_type, zm
         MsgAckCommit *msg_ack_com = msg_committed(counter);
         LOG_DEBUG_CAP("%s(msg_type):Reply_COMMIT from client_(node_id):%u --NodeID %u handle", 
                     UND_YEL, client_id, view_->whoami());
-        commo_->reply_msg(msg_ack_com, COMMITTED, identity, worker);
+        commo_->reply_msg(msg_ack_com, COMMITTED, identity);
         
         return;
       }
@@ -480,7 +480,7 @@ void Captain::re_handle_msg(google::protobuf::Message *msg, MsgType msg_type, zm
         
         LOG_DEBUG_CAP("%s(msg_type):Reply_COMMIT from client_(node_id):%u --NodeID %u handle", 
                     UND_YEL, client_id, view_->whoami());
-        commo_->reply_msg(msg_ack_com, COMMITTED, identity, worker);
+        commo_->reply_msg(msg_ack_com, COMMITTED, identity);
 
       }
       break;

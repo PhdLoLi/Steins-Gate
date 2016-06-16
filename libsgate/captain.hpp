@@ -73,7 +73,7 @@ class Captain {
   /**
    * handle message from commo, all kinds of message
    */
-  void re_handle_msg(google::protobuf::Message *, MsgType, zmq::message_t &id = dumID_, zmq::socket_t *socket = dumSoc_);
+  void re_handle_msg(google::protobuf::Message *, MsgType, zmq::message_t &id = dumID_);
 
   /**
    * Add a new chosen_value 

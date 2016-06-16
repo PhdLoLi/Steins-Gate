@@ -31,7 +31,7 @@ class Commo {
   void waiting_msg();
   void broadcast_msg(google::protobuf::Message *, MsgType);
   void send_one_msg(google::protobuf::Message *, MsgType, node_id_t);
-  void reply_msg(google::protobuf::Message *, MsgType, zmq::message_t &id, zmq::socket_t *worker);
+  void reply_msg(google::protobuf::Message *, MsgType, zmq::message_t &id);
   void reply_client(google::protobuf::Message *, MsgType, node_id_t);
   void deal_msg(zmq::message_t &request);
 
@@ -46,17 +46,17 @@ class Commo {
   View *view_;
 //  pool *pool_;
   zmq::context_t context_;
-  zmq::context_t ctx_;
-//  zmq::socket_t *receiver_;
+//  zmq::context_t ctx_;
+  zmq::socket_t *receiver_;
 //  zmq::socket_t sender_;
   std::vector<zmq::socket_t *> senders_;
 //  std::vector<zmq::context_t> ctxes_;
 //  std::vector<boost::thread *> sender_threads;
 
-  std::vector<zmq::socket_t *> workers_;
-  std::vector<boost::thread *> worker_threads;
-  zmq::socket_t frontend_;
-  zmq::socket_t backend_;
+//  std::vector<zmq::socket_t *> workers_;
+//  std::vector<boost::thread *> worker_threads;
+//  zmq::socket_t frontend_;
+//  zmq::socket_t backend_;
 //  server_task *st_;
 //  std::vector<int> senders_state_;
 
