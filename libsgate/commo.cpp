@@ -15,9 +15,10 @@ Commo::Commo(Captain *captain, View &view)
   : captain_(captain), view_(&view), context_(1), 
     frontend_(context_, ZMQ_ROUTER), backend_(context_, ZMQ_DEALER) {
   LOG_INFO_COM("%s Init START", view_->hostname().c_str());
+  if (view_->if_master()) {
   for (uint32_t i = 0; i < view_->nodes_size(); i++) {
     ctxes_.push_back(zmq::context_t(1));
-    senders_.push_back(new zmq::socket_t(ctxes_[i], ZMQ_DEALER));
+    senders_.push_back(new zmq::socket_t(context_, ZMQ_DEALER));
     if (i != view_->whoami()) {
       std::string identity = std::to_string(view_->whoami());
       senders_[i]->setsockopt(ZMQ_IDENTITY, identity.c_str(), identity.size());
@@ -27,6 +28,7 @@ Commo::Commo(Captain *captain, View &view)
       sender_threads.push_back(new boost::thread(boost::bind(&Commo::waiting, this, senders_[i])));
 //      sender_threads[i]->detach();
     }
+  }
   }
 }
 
