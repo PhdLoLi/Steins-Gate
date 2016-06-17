@@ -63,11 +63,11 @@ void Commo::waiting_msg() {
   items[0].socket = (void *)(*receiver_);
   items[0].events = ZMQ_POLLIN; 
   while (true) {
-    zmq::poll(&items[0], 1, 0);
+    zmq::poll(&items[0], 1, 1);
       if (items[0].revents & ZMQ_POLLIN) {
       zmq::message_t identity;
       zmq::message_t request;
-      while (receiver_->recv(&identity, ZMQ_DONTWAIT) > 0) {
+      if (receiver_->recv(&identity, ZMQ_DONTWAIT) > 0) {
         receiver_->recv(&request);
         std::string msg_str(static_cast<char*>(request.data()), request.size());
         int type = int(msg_str.back() - '0');
@@ -143,7 +143,7 @@ void Commo::sender_waiting(node_id_t id) {
       LOG_DEBUG("I'm sending sender_%d FINISH", id);
     }
 
-    zmq::poll(&items[0], 1, 0);
+    zmq::poll(&items[0], 1, 1);
     if (items[0].revents & ZMQ_POLLIN) {
       zmq::message_t request;
       senders_[id]->recv(&request, ZMQ_DONTWAIT);
@@ -251,7 +251,7 @@ void Commo::send_one_msg(google::protobuf::Message *msg, MsgType msg_type, node_
 // PROMISE ACCEPTED LEARN for acc, COMMITTED READ for master 
 void Commo::reply_msg(google::protobuf::Message *msg, MsgType msg_type, zmq::message_t &identity) {
 //  std::cout << " --- Commo Send ONE to captain " << node_id << " MsgType: " << msg_type << std::endl;
-  LOG_DEBUG_COM("Reply to --%s (msg_type):%d", view_->hostname(node_id).c_str(), msg_type);
+//  LOG_DEBUG_COM("Reply to --%s (msg_type):%d", view_->hostname(node_id).c_str(), msg_type);
   std::string msg_str;
   msg->SerializeToString(&msg_str);
   msg_str.append(std::to_string(msg_type));
@@ -259,10 +259,10 @@ void Commo::reply_msg(google::protobuf::Message *msg, MsgType msg_type, zmq::mes
   memcpy((void *)request.data(), msg_str.c_str(), msg_str.size());
   zmq::message_t copied_id;
   copied_id.copy(&identity);
-  LOG_DEBUG_COM("receiver_ reply request to %s", view_->hostname(node_id).c_str());
+//  LOG_DEBUG_COM("receiver_ reply request to %s", view_->hostname(node_id).c_str());
   receiver_->send(copied_id, ZMQ_SNDMORE);
   receiver_->send(request, ZMQ_DONTWAIT);
-  LOG_DEBUG_COM("receiver_ reply request to %s finish", view_->hostname(node_id).c_str());
+//  LOG_DEBUG_COM("receiver_ reply request to %s finish", view_->hostname(node_id).c_str());
 }
 // COMMITTED WRITE for master 
 void Commo::reply_client(google::protobuf::Message *msg, MsgType msg_type, node_id_t node_id) {
