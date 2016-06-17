@@ -14,7 +14,6 @@
 #include <zmq.hpp>
 #include <unistd.h>
 #include <google/protobuf/text_format.h>
-#include <queue>
 //#include <map>
 
 using namespace boost::threadpool;
@@ -25,35 +24,27 @@ class server_task;
 
 class Commo {
  public:
+  enum { kMaxThread = 3 };
   Commo(Captain *captain, View &view);
   Commo(Client *client, View &view);
   ~Commo();
-
-  void sender_waiting(node_id_t id);
   void waiting_msg();
-  void client_waiting();
-
+  void client_waiting_msg();
   void broadcast_msg(google::protobuf::Message *, MsgType);
   void send_one_msg(google::protobuf::Message *, MsgType, node_id_t);
-
   void reply_msg(google::protobuf::Message *, MsgType, zmq::message_t &id);
   void reply_client(google::protobuf::Message *, MsgType, node_id_t);
+
 
  private:
   std::vector<Captain *> captains_;
   Captain *captain_;
   Client *client_;
   View *view_;
-  pool *pool_;
+//  pool *pool_;
   zmq::context_t context_;
   zmq::socket_t *receiver_;
-  std::map<node_id_t, zmq::socket_t *> senders_;
-  std::map<node_id_t, zmq::context_t> ctxes_;
-  std::map<node_id_t, boost::thread *> sender_threads_;
-  std::map<node_id_t, boost::mutex> sender_locks_;
-  std::map<node_id_t, std::queue<zmq::message_t *>> sender_queues_; 
-  std::queue<zmq::message_t *> receiver_queue_;
-  std::queue<zmq::message_t *> receiver_id_queue_;
-  boost::mutex receiver_lock_;
+  std::vector<zmq::socket_t *> senders_;
+
 };
 } // namespace sgate
